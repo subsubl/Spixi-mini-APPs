@@ -316,6 +316,7 @@ function updatePaddle() {
     const moveUp = keysPressed['up'] || touchControlActive === 'up';
     const moveDown = keysPressed['down'] || touchControlActive === 'down';
     
+    // Always control your own paddle
     if (moveUp) {
         gameState.localPaddle.y = Math.max(0, gameState.localPaddle.y - PADDLE_SPEED);
     }
@@ -338,47 +339,60 @@ function updateBall() {
 
 
 function checkCollisions() {
-    // Local player always on right side
-    const localPaddleX = CANVAS_WIDTH - 20 - PADDLE_WIDTH;
-    const remotePaddleX = 20;
+    // Ball owner always on right side
+    const rightPaddleX = CANVAS_WIDTH - 20 - PADDLE_WIDTH;
+    const leftPaddleX = 20;
     
-    // Local paddle collision (right side)
-    if (gameState.ball.x + BALL_SIZE / 2 >= localPaddleX &&
-        gameState.ball.x - BALL_SIZE / 2 <= localPaddleX + PADDLE_WIDTH &&
-        gameState.ball.y >= gameState.localPaddle.y &&
-        gameState.ball.y <= gameState.localPaddle.y + PADDLE_HEIGHT) {
+    let rightPaddleY, leftPaddleY;
+    if (gameState.isBallOwner) {
+        rightPaddleY = gameState.localPaddle.y;
+        leftPaddleY = gameState.remotePaddle.y;
+    } else {
+        rightPaddleY = gameState.remotePaddle.y;
+        leftPaddleY = gameState.localPaddle.y;
+    }
+    
+    // Right paddle collision (ball owner)
+    if (gameState.ball.x + BALL_SIZE / 2 >= rightPaddleX &&
+        gameState.ball.x - BALL_SIZE / 2 <= rightPaddleX + PADDLE_WIDTH &&
+        gameState.ball.y >= rightPaddleY &&
+        gameState.ball.y <= rightPaddleY + PADDLE_HEIGHT) {
         
         gameState.ball.vx = -Math.abs(gameState.ball.vx); // Bounce left
         gameState.ball.vx += gameState.ball.vx > 0 ? BALL_SPEED_INCREMENT : -BALL_SPEED_INCREMENT;
         
-        const relativeIntersectY = (gameState.localPaddle.y + PADDLE_HEIGHT / 2) - gameState.ball.y;
+        const relativeIntersectY = (rightPaddleY + PADDLE_HEIGHT / 2) - gameState.ball.y;
         gameState.ball.vy = -relativeIntersectY * 0.15;
         
-        gameState.ball.x = localPaddleX - BALL_SIZE / 2;
+        gameState.ball.x = rightPaddleX - BALL_SIZE / 2;
         sendBallState(); // Send ball state on collision
     }
     
-    // Remote paddle collision (left side)
-    if (gameState.ball.x - BALL_SIZE / 2 <= remotePaddleX + PADDLE_WIDTH &&
-        gameState.ball.x + BALL_SIZE / 2 >= remotePaddleX &&
-        gameState.ball.y >= gameState.remotePaddle.y &&
-        gameState.ball.y <= gameState.remotePaddle.y + PADDLE_HEIGHT) {
+    // Left paddle collision (non-owner)
+    if (gameState.ball.x - BALL_SIZE / 2 <= leftPaddleX + PADDLE_WIDTH &&
+        gameState.ball.x + BALL_SIZE / 2 >= leftPaddleX &&
+        gameState.ball.y >= leftPaddleY &&
+        gameState.ball.y <= leftPaddleY + PADDLE_HEIGHT) {
         
         gameState.ball.vx = Math.abs(gameState.ball.vx); // Bounce right
         gameState.ball.vx += gameState.ball.vx > 0 ? BALL_SPEED_INCREMENT : -BALL_SPEED_INCREMENT;
         
-        const relativeIntersectY = (gameState.remotePaddle.y + PADDLE_HEIGHT / 2) - gameState.ball.y;
+        const relativeIntersectY = (leftPaddleY + PADDLE_HEIGHT / 2) - gameState.ball.y;
         gameState.ball.vy = -relativeIntersectY * 0.15;
         
-        gameState.ball.x = remotePaddleX + PADDLE_WIDTH + BALL_SIZE / 2;
+        gameState.ball.x = leftPaddleX + PADDLE_WIDTH + BALL_SIZE / 2;
         sendBallState(); // Send ball state on collision
     }
 }
 
 function checkScore() {
     if (gameState.ball.x < 0) {
-        // Left side (remote player) missed
-        gameState.remotePaddle.lives--;
+        // Left side (non-owner) missed
+        if (gameState.isBallOwner) {
+            gameState.remotePaddle.lives--;
+        } else {
+            gameState.localPaddle.lives--;
+        }
         updateLivesDisplay();
         
         if (gameState.localPaddle.lives <= 0 || gameState.remotePaddle.lives <= 0) {
@@ -388,8 +402,12 @@ function checkScore() {
             sendLifeUpdate();
         }
     } else if (gameState.ball.x > CANVAS_WIDTH) {
-        // Right side (local player) missed
-        gameState.localPaddle.lives--;
+        // Right side (ball owner) missed
+        if (gameState.isBallOwner) {
+            gameState.localPaddle.lives--;
+        } else {
+            gameState.remotePaddle.lives--;
+        }
         updateLivesDisplay();
         
         if (gameState.localPaddle.lives <= 0 || gameState.remotePaddle.lives <= 0) {
@@ -481,19 +499,39 @@ function render() {
         ctx.restore();
     }
     
-    // Draw paddles - local player always on right side
-    const localPaddleX = CANVAS_WIDTH - 20 - PADDLE_WIDTH; // Always right
-    const remotePaddleX = 20; // Always left
+    // Draw paddles - ball owner always on right side
+    // If I own ball: I'm on right (red), opponent on left (blue)
+    // If opponent owns ball: opponent on right (red), I'm on left (blue)
     
-    // Color local paddle blue, remote paddle blue
-    ctx.fillStyle = '#4299e1';
-    ctx.fillRect(localPaddleX, gameState.localPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+    let rightPaddleY, leftPaddleY, rightPaddleColor, leftPaddleColor;
     
-    ctx.fillStyle = '#4299e1';
-    ctx.fillRect(remotePaddleX, gameState.remotePaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+    if (gameState.isBallOwner) {
+        // I own ball - I'm on right (red)
+        rightPaddleY = gameState.localPaddle.y;
+        leftPaddleY = gameState.remotePaddle.y;
+        rightPaddleColor = '#f56565'; // Red for ball owner
+        leftPaddleColor = '#4299e1';  // Blue for non-owner
+    } else {
+        // Opponent owns ball - opponent on right (red)
+        rightPaddleY = gameState.remotePaddle.y;
+        leftPaddleY = gameState.localPaddle.y;
+        rightPaddleColor = '#f56565'; // Red for ball owner
+        leftPaddleColor = '#4299e1';  // Blue for non-owner
+    }
     
-    // Draw ball - red if this player owns it, white otherwise
-    ctx.fillStyle = gameState.isBallOwner ? '#f56565' : '#ffffff';
+    const rightPaddleX = CANVAS_WIDTH - 20 - PADDLE_WIDTH;
+    const leftPaddleX = 20;
+    
+    // Draw right paddle (ball owner)
+    ctx.fillStyle = rightPaddleColor;
+    ctx.fillRect(rightPaddleX, rightPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
+    
+    // Draw left paddle (non-owner)
+    ctx.fillStyle = leftPaddleColor;
+    ctx.fillRect(leftPaddleX, leftPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
+    
+    // Draw ball - always white
+    ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(gameState.ball.x, gameState.ball.y, BALL_SIZE / 2, 0, Math.PI * 2);
     ctx.fill();
