@@ -1,0 +1,23 @@
+{
+  "name": "spixi-mini-app-packer",
+  "version": "1.2.0",
+  "description": "Command-line tool for packing Spixi Mini Apps",
+  "main": "pack-app.js",
+  "bin": {
+    "pack-spixi-app": "./pack-app.js"
+  },
+  "scripts": {
+    "pack": "node pack-app.js"
+  },
+  "keywords": [
+    "spixi",
+    "mini-apps",
+    "packer",
+    "ixian"
+  ],
+  "author": "IXI Labs",
+  "license": "MIT",
+  "dependencies": {
+    "jszip": "^3.10.1"
+  }
+}

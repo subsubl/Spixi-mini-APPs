@@ -29,8 +29,50 @@ Ideal for packaging and verifying your Mini App before deploying it to a host or
 
 ---
 
+### Command Line Packer (`pack-app.js`)
+
+A Node.js command-line tool for automated packaging of Mini Apps.
+
+**Installation:**
+
+```bash
+npm install
+```
+
+**Usage:**
+
+```bash
+node pack-app.js <app-path> [output-dir]
+```
+
+**Examples:**
+
+```bash
+# Pack an app (outputs to app directory)
+node pack-app.js ./apps/com.ixilabs.spixi.pong
+
+# Pack an app to specific output directory
+node pack-app.js ./apps/com.ixilabs.spixi.pong ./packed
+
+# Pack with absolute paths
+node pack-app.js C:\Apps\MySpixiApp C:\Output
+```
+
+The CLI tool automatically:
+
+- Validates required files (`appinfo.spixi`, `app/index.html`)
+- Creates compressed `.zip` archive
+- Generates `.spixi` metadata with SHA-256 checksum
+- Copies `icon.png` if available
+- Reports file sizes and locations
+
+Perfect for CI/CD pipelines and batch processing multiple apps.
+
+---
+
 ### Example Mini Apps (`apps/`)
-Prebuilt Mini Apps to help you understand and explore what’s possible with Spixi Mini Apps.
+
+Prebuilt Mini Apps to help you understand and explore what's possible with Spixi Mini Apps.
 
 Each example includes:
 
@@ -55,7 +97,8 @@ Feel free to use these as reference templates or extend them into your own Mini 
 ## Building Your Own Mini App
 
 Mini Apps are self-contained folders that get zipped, structured as:
-```
+
+```text
 yourapp/
 ├── appinfo.spixi
 ├── icon.png
@@ -66,12 +109,14 @@ yourapp/
 ```
 
 Requirements:
+
 - app/index.html – Entry point of your Mini App
 - appinfo.spixi – Metadata file (see below)
 - icon.png – Icon displayed in Spixi (recommended size: 512x512)
 
 Sample appinfo.spixi
-```
+
+```text
 caVersion = 0
 id = com.example.myapp
 publisher = YourName
