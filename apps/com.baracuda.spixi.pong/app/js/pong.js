@@ -38,27 +38,52 @@ let lastDataSent = 0;
 let keysPressed = {};
 let touchControlActive = null;
 let helloReceived = false;
-let helloSent = false;
+let helloPingInterval = null;
 let bothUsersPresent = false;
+let localPlayerReady = false;
+let remotePlayerReady = false;
+let countdownActive = false;
+let countdownValue = 3;
+let ballActive = false;
+let waitingForShoot = false;
 
 // Network ping interval
-const pingInterval = setInterval(ping, 2000);
+let pingInterval = null;
 let gameLoopInterval = null;
 
-function ping() {
+function startHelloPing() {
+    // Clear any existing interval
+    if (helloPingInterval) {
+        clearInterval(helloPingInterval);
+    }
+    
+    // Send hello immediately
+    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"h"}));
+    lastDataSent = SpixiTools.getTimestamp();
+    
+    // Ping every second until we get a response
+    helloPingInterval = setInterval(() => {
+        if (!bothUsersPresent) {
+            SpixiAppSdk.sendNetworkData(JSON.stringify({a:"h"}));
+            lastDataSent = SpixiTools.getTimestamp();
+        } else {
+            clearInterval(helloPingInterval);
+            helloPingInterval = null;
+            // Start regular ping interval
+            if (!pingInterval) {
+                pingInterval = setInterval(regularPing, 2000);
+            }
+        }
+    }, 1000);
+}
+
+function regularPing() {
     const currentTime = SpixiTools.getTimestamp();
-    if (currentTime - lastDataSent < 3 || currentTime - playerLastSeen < 3) {
+    if (currentTime - lastDataSent < 2) {
         return;
     }
     lastDataSent = currentTime;
-    
-    // Send hello if not both users present
-    if (!bothUsersPresent) {
-        SpixiAppSdk.sendNetworkData(JSON.stringify({a:"h"}));
-        helloSent = true;
-    } else {
-        SpixiAppSdk.sendNetworkData(JSON.stringify({a:"p"}));
-    }
+    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"p"}));
 }
 
 function initGame() {
@@ -126,14 +151,26 @@ function setupControls() {
     downBtn.addEventListener('mousedown', () => { keysPressed['down'] = true; });
     downBtn.addEventListener('mouseup', () => { keysPressed['down'] = false; });
     
-    // Start button
+    // Start button - mark player as ready
     const startBtn = document.getElementById('startBtn');
     if (startBtn) {
         startBtn.addEventListener('click', () => {
-            if (remotePlayerAddress !== '' && gameState.waitingForStart) {
-                gameState.waitingForStart = false;
-                sendStartGame();
-                startGame();
+            if (bothUsersPresent && !localPlayerReady) {
+                localPlayerReady = true;
+                startBtn.disabled = true;
+                startBtn.textContent = 'Waiting for opponent...';
+                sendPlayerReady();
+                checkBothPlayersReady();
+            }
+        });
+    }
+    
+    // Shoot button
+    const shootBtn = document.getElementById('shootBtn');
+    if (shootBtn) {
+        shootBtn.addEventListener('click', () => {
+            if (waitingForShoot && gameState.isHost) {
+                shootBall();
             }
         });
     }
@@ -148,23 +185,76 @@ function setupControls() {
     }
 }
 
+function checkBothPlayersReady() {
+    if (localPlayerReady && remotePlayerReady && !countdownActive) {
+        startCountdown();
+    }
+}
+
+function startCountdown() {
+    countdownActive = true;
+    countdownValue = 3;
+    document.getElementById('status-text').textContent = countdownValue;
+    
+    const countdownInterval = setInterval(() => {
+        countdownValue--;
+        if (countdownValue > 0) {
+            document.getElementById('status-text').textContent = countdownValue;
+        } else {
+            clearInterval(countdownInterval);
+            countdownActive = false;
+            startGame();
+        }
+    }, 1000);
+}
+
 function startGame() {
     document.getElementById('waiting-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'block';
-    document.getElementById('status-text').textContent = 'Game Started!';
+    document.getElementById('startBtn').style.display = 'none';
+    
+    if (gameState.isHost) {
+        document.getElementById('status-text').textContent = 'Click SHOOT to start!';
+        document.getElementById('shootBtn').style.display = 'inline-block';
+        waitingForShoot = true;
+    } else {
+        document.getElementById('status-text').textContent = 'Waiting for opponent to shoot...';
+        document.getElementById('shootBtn').style.display = 'none';
+    }
     
     gameState.gameStarted = true;
     gameState.waitingForStart = false;
     gameState.lastUpdate = SpixiTools.getTimestamp();
     
-    if (gameState.isHost) {
-        resetBall();
-        setTimeout(() => sendGameState(), 100);
-    }
+    // Ball stays centered until shot
+    gameState.ball.x = CANVAS_WIDTH / 2;
+    gameState.ball.y = CANVAS_HEIGHT / 2;
+    gameState.ball.vx = 0;
+    gameState.ball.vy = 0;
+    ballActive = false;
     
     // Start game loop
     if (!gameLoopInterval) {
         gameLoopInterval = setInterval(gameLoop, 1000 / FRAME_RATE);
+    }
+}
+
+function shootBall() {
+    if (!ballActive && gameState.isHost) {
+        waitingForShoot = false;
+        ballActive = true;
+        document.getElementById('shootBtn').style.display = 'none';
+        document.getElementById('status-text').textContent = 'Game On!';
+        
+        // Initialize ball velocity
+        const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
+        const direction = Math.random() < 0.5 ? 1 : -1;
+        gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL * direction;
+        gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
+        
+        // Notify other player
+        sendShootNotification();
+        setTimeout(() => sendGameState(), 50);
     }
 }
 
@@ -175,7 +265,7 @@ function gameLoop() {
     
     updatePaddle();
     
-    if (gameState.isHost) {
+    if (gameState.isHost && ballActive) {
         updateBall();
         checkCollisions();
         checkScore();
@@ -346,8 +436,8 @@ function restartGame() {
         ball: {
             x: CANVAS_WIDTH / 2,
             y: CANVAS_HEIGHT / 2,
-            vx: BALL_SPEED_INITIAL,
-            vy: BALL_SPEED_INITIAL * 0.5
+            vx: 0,
+            vy: 0
         },
         isHost: gameState.isHost,
         gameStarted: false,
@@ -356,14 +446,24 @@ function restartGame() {
         lastUpdate: 0
     };
     
+    localPlayerReady = false;
+    remotePlayerReady = false;
+    countdownActive = false;
+    ballActive = false;
+    waitingForShoot = false;
+    
     document.getElementById('game-over-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('startBtn').style.display = 'inline-block';
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('startBtn').textContent = 'Start Game';
+    document.getElementById('shootBtn').style.display = 'none';
+    document.getElementById('status-text').textContent = 'Press START when ready!';
     
     updateLivesDisplay();
     
     if (remotePlayerAddress !== '') {
         sendRestartRequest();
-        startGame();
     }
 }
 
@@ -374,8 +474,14 @@ function exitGame() {
     }
     if (pingInterval) {
         clearInterval(pingInterval);
+        pingInterval = null;
     }
-    SpixiAppSdk.back();
+    if (helloPingInterval) {
+        clearInterval(helloPingInterval);
+        helloPingInterval = null;
+    }
+    // Use spixiAction with "close" to properly exit webview
+    SpixiAppSdk.spixiAction("close");
 }
 
 // Network functions
@@ -416,6 +522,16 @@ function sendRestartRequest() {
     SpixiAppSdk.sendNetworkData(JSON.stringify({a:"r"}));
 }
 
+function sendPlayerReady() {
+    lastDataSent = SpixiTools.getTimestamp();
+    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"ready"}));
+}
+
+function sendShootNotification() {
+    lastDataSent = SpixiTools.getTimestamp();
+    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"shoot"}));
+}
+
 function saveGameState() {
     if (remotePlayerAddress !== '') {
         setTimeout(() => {
@@ -441,9 +557,8 @@ SpixiAppSdk.onInit = function(sessionId, userAddresses) {
     initGame();
     loadGameState(remotePlayerAddress);
     
-    // Send hello message immediately
-    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"h"}));
-    helloSent = true;
+    // Start hello ping sequence
+    startHelloPing();
     
     // Show waiting screen
     document.getElementById('waiting-screen').style.display = 'flex';
@@ -459,14 +574,32 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
         
         switch(d.a) {
             case "h": // hello
-                helloReceived = true;
-                if (helloSent && !bothUsersPresent) {
+                // Reply to hello
+                if (!helloReceived) {
+                    helloReceived = true;
+                    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"h"}));
+                }
+                
+                if (!bothUsersPresent) {
                     bothUsersPresent = true;
-                    // Both users present, show game screen
+                    // Both users present, show game screen with start button
                     document.getElementById('waiting-screen').style.display = 'none';
                     document.getElementById('game-screen').style.display = 'block';
-                    document.getElementById('status-text').textContent = 'Press Start to Begin!';
+                    document.getElementById('status-text').textContent = 'Press START when ready!';
+                    document.getElementById('startBtn').style.display = 'inline-block';
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('shootBtn').style.display = 'none';
                 }
+                break;
+                
+            case "ready": // player ready
+                remotePlayerReady = true;
+                checkBothPlayersReady();
+                break;
+                
+            case "shoot": // ball shot
+                ballActive = true;
+                document.getElementById('status-text').textContent = 'Game On!';
                 break;
                 
             case "p": // ping
@@ -494,6 +627,11 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                     gameState.localPaddle.lives = d.r;
                     gameState.remotePaddle.lives = d.l;
                     updateLivesDisplay();
+                    
+                    // Activate ball if it has velocity
+                    if ((gameState.ball.vx !== 0 || gameState.ball.vy !== 0) && !ballActive) {
+                        ballActive = true;
+                    }
                     
                     if (gameState.localPaddle.lives <= 0) {
                         endGame(false);

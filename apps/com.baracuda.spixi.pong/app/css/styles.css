@@ -156,13 +156,44 @@ body {
     color: white;
 }
 
-.start-btn:hover {
+.start-btn:hover:not(:disabled) {
     background: linear-gradient(135deg, #38a169, #2f855a);
     transform: translateY(-2px);
 }
 
-.start-btn:active {
+.start-btn:active:not(:disabled) {
     transform: translateY(0);
+}
+
+.start-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.shoot-btn {
+    background: linear-gradient(135deg, #ed8936, #dd6b20);
+    color: white;
+    font-size: 1.3rem;
+    font-weight: 800;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.shoot-btn:hover {
+    background: linear-gradient(135deg, #dd6b20, #c05621);
+    transform: translateY(-2px) scale(1.05);
+}
+
+.shoot-btn:active {
+    transform: translateY(0) scale(1);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 4px 15px rgba(237, 137, 54, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(237, 137, 54, 0.8);
+    }
 }
 
 .exit-btn {

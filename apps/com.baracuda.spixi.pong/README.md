@@ -20,10 +20,11 @@ A classic Pong game reimagined as a real-time multiplayer Spixi Mini App. Challe
 ### Starting the Game
 
 1. Open the app in Spixi and invite another user
-2. Wait for both players to connect (you'll see "Press Start to Begin!")
-3. Click the **Start Game** button to begin
-4. Use controls to move your paddle up and down
-5. Prevent the ball from passing your paddle
+2. Wait for both players to connect (you'll see "Press START when ready!")
+3. Both players click the **START** button
+4. Watch the 3-second countdown (3... 2... 1...)
+5. Host player clicks **SHOOT** to launch the ball
+6. Use controls to move your paddle and prevent the ball from passing
 
 ### Controls
 
@@ -44,7 +45,8 @@ A classic Pong game reimagined as a real-time multiplayer Spixi Mini App. Challe
 
 ### In-Game Actions
 
-- **Start Game** - Begin the match (both players must be present)
+- **START** - Mark yourself as ready (both players must click)
+- **SHOOT** - Launch the ball (host player only, after countdown)
 - **Exit** - Close the app and return to Spixi
 - **Play Again** - Restart the game after it ends (resets lives to 3)
 
@@ -119,17 +121,27 @@ com.baracuda.spixi.pong/
 
 | Action Code | Description | Direction |
 |------------|-------------|-----------|
-| `h` | Hello handshake | Both |
+| `h` | Hello handshake (1s interval) | Both |
 | `p` | Ping keepalive | Both |
 | `m` | Paddle move | Both |
-| `s` | Start game | Both |
+| `ready` | Player ready for countdown | Both |
+| `shoot` | Ball launched | Host → Client |
 | `g` | Game state (ball + lives) | Host → Client |
 | `e` | End game | Both |
 | `r` | Restart request | Both |
 
 ## 📝 Version History
 
-### v1.2.0 (Current)
+### v1.3.0 (Current)
+- 🎯 Fixed ball stuck in center - now moves only after shoot
+- 🔫 Added SHOOT button for host player to start the ball
+- ⏱️ Added 3-second animated countdown before game starts
+- 🤝 Improved hello handshake - pings every 1 second until connection
+- 🚪 Fixed exit function (now uses `spixiAction("close")`)
+- ✅ Both players must click START to begin countdown
+- 🏓 More realistic pong gameplay flow
+
+### v1.2.0
 - ✨ Added hello handshake system for user presence detection
 - 🚀 Optimized network packets (50%+ size reduction)
 - 🔧 Fixed exit button (now uses SDK `back()` method)
