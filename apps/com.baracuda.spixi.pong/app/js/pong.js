@@ -616,10 +616,11 @@ function sendGameState() {
     const ballActive = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
     if (gameState.isBallOwner && ballActive) {
         const b = gameState.ball;
+        // Mirror X coordinates for opponent's view (they see from opposite side)
         state.b = {
-            x: Math.round(b.x),
+            x: Math.round(CANVAS_WIDTH - b.x),
             y: Math.round(b.y),
-            vx: Number(b.vx.toFixed(2)),
+            vx: Number((-b.vx).toFixed(2)),
             vy: Number(b.vy.toFixed(2))
         };
     }
@@ -743,26 +744,30 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                 
                 // Non-owner readjusts ball when velocity changes (bounce detected)
                 if (msg.b && !gameState.isBallOwner) {
+                    // Convert from sender's coordinate system to ours (mirror X)
+                    const mirroredX = CANVAS_WIDTH - msg.b.x;
+                    const mirroredVx = -msg.b.vx;
+                    
                     const velocityChanged = 
-                        Math.abs(gameState.ball.vx - msg.b.vx) > 0.5 || 
+                        Math.abs(gameState.ball.vx - mirroredVx) > 0.5 || 
                         Math.abs(gameState.ball.vy - msg.b.vy) > 0.5;
                     
                     if (velocityChanged) {
                         // Bounce detected - resync position and velocity
-                        gameState.ball.x = msg.b.x;
+                        gameState.ball.x = mirroredX;
                         gameState.ball.y = msg.b.y;
-                        gameState.ball.vx = msg.b.vx;
+                        gameState.ball.vx = mirroredVx;
                         gameState.ball.vy = msg.b.vy;
                     } else {
-                        // No bounce - just update velocity in case of drift
+                        // No bounce - just check for drift
                         const distance = Math.sqrt(
-                            Math.pow(gameState.ball.x - msg.b.x, 2) + 
+                            Math.pow(gameState.ball.x - mirroredX, 2) + 
                             Math.pow(gameState.ball.y - msg.b.y, 2)
                         );
                         
                         // Only correct if significantly off (late data)
                         if (distance > 100) {
-                            gameState.ball.x = msg.b.x;
+                            gameState.ball.x = mirroredX;
                             gameState.ball.y = msg.b.y;
                         }
                     }
