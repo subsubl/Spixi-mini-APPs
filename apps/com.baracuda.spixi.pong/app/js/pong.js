@@ -288,22 +288,23 @@ function gameLoop() {
     // Smooth interpolate remote paddle position
     gameState.remotePaddle.y += (remotePaddleTarget - gameState.remotePaddle.y) * PADDLE_LERP_FACTOR;
     
-    // Ball owner updates ball physics
+    // Both players update ball physics
+    const ballHasVelocity = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
+    const targetHasVelocity = Math.abs(ballTarget.vx) > 0.1 || Math.abs(ballTarget.vy) > 0.1;
+    
     if (gameState.isBallOwner) {
-        if (gameState.ball.vx !== 0) {
+        // Ball owner: update physics locally
+        if (ballHasVelocity) {
             updateBall();
             checkCollisions();
             checkScore();
         }
     } else {
-        // Non-owner: interpolate ball movement
-        const ballHasVelocity = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
-        const targetHasVelocity = Math.abs(ballTarget.vx) > 0.1 || Math.abs(ballTarget.vy) > 0.1;
-        
+        // Non-owner: always interpolate toward received data
         if (ballHasVelocity || targetHasVelocity) {
             interpolateBall();
         } else {
-            // Ball is truly stationary - keep at target position
+            // Ball is stationary - sync to target
             gameState.ball.x = ballTarget.x;
             gameState.ball.y = ballTarget.y;
             gameState.ball.vx = 0;
@@ -782,8 +783,8 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                     remotePaddleTarget = msg.p;
                 }
                 
-                // Update ball state if included and we don't own the ball
-                if (msg.b && !gameState.isBallOwner) {
+                // Update ball state if included (both owner and non-owner readjust)
+                if (msg.b) {
                     // Always update target with latest data
                     ballTarget.x = msg.b.x;
                     ballTarget.y = msg.b.y;
@@ -801,6 +802,7 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                     const targetSpeed = Math.sqrt(msg.b.vx * msg.b.vx + msg.b.vy * msg.b.vy);
                     
                     // Snap if: starting/stopping, very far away, or speed changed significantly
+                    // Both players snap to ensure sync
                     if (currentSpeed < 0.5 || distance > 150 || Math.abs(currentSpeed - targetSpeed) > 3) {
                         gameState.ball.x = msg.b.x;
                         gameState.ball.y = msg.b.y;
