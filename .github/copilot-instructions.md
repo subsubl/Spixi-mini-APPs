@@ -174,10 +174,13 @@ if (otherMovesCount > myMovesCount) {
 
 - **Authentication App**: `com.ixilabs.spixi.auth` - QR code scanning with `spixiAction()`
 - **Multiplayer Game**: `com.ixilabs.spixi.tictactoe` - State sync, turn management
+- **Real-time Game**: `com.baracuda.spixi.pong` - Advanced network sync, unified state packets, interpolation
 - **Real-time Collab**: `com.ixilabs.spixi.whiteboard` - Batched data transmission
 - **Protocol Extension**: `com.mostnonameuser.spixi.aiassistant` - Custom protocol handlers
 
-## Batched Data Transmission Pattern
+## Network Optimization Patterns
+
+### Batched Data Transmission
 
 For real-time collaborative apps, batch frequent updates to reduce network overhead:
 
@@ -198,6 +201,67 @@ setInterval(() => {
 ```
 
 See `whiteboard.js` for full implementation.
+
+### Unified State Packets
+
+For real-time games, combine multiple state elements into single packets:
+
+```javascript
+// Pong pattern - unified game state at 60fps
+function sendGameState() {
+    const state = {
+        a: "state",
+        f: frameCounter,  // Frame number for sync
+        p: paddleY        // Paddle position
+    };
+    
+    // Include ball data if owner and active
+    if (gameState.isBallOwner && ballActive) {
+        state.b = {
+            x: Math.round(ball.x),
+            y: Math.round(ball.y),
+            vx: ball.vx.toFixed(2),
+            vy: ball.vy.toFixed(2)
+        };
+    }
+    
+    SpixiAppSdk.sendNetworkData(JSON.stringify(state));
+}
+```
+
+**Benefits**:
+- Reduces network packets by ~50%
+- Better synchronization with frame counters
+- Consistent update rate (60fps = 16ms intervals)
+- Skip sending when nothing changed
+
+### Smooth Interpolation
+
+For fluid remote object movement, use interpolation instead of direct updates:
+
+```javascript
+// Store target position from network
+let remotePaddleTarget = 0;
+
+// In game loop - smooth interpolation
+gameState.remotePaddle.y += (remotePaddleTarget - gameState.remotePaddle.y) * 0.4;
+
+// On network receive - update target
+SpixiAppSdk.onNetworkData = function(senderAddress, data) {
+    const msg = JSON.parse(data);
+    if (msg.p !== undefined) {
+        remotePaddleTarget = msg.p;  // Don't set directly
+    }
+};
+```
+
+**Key Points**:
+- Lerp factor 0.3-0.4 for smooth visuals
+- Predictive positioning for ball movement
+- Velocity threshold checks (>0.1) to detect stopped objects
+- Snap to position when speed < 0.5 or distance > 200
+
+See `pong.js` for complete implementation.
 
 ## Error Handling Pattern
 
