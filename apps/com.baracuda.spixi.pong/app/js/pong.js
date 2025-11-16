@@ -57,6 +57,10 @@ let keysPressed = {};
 let touchControlActive = null;
 let connectionEstablished = false;
 
+// Random number exchange for ball owner determination
+let myRandomNumber = Math.floor(Math.random() * 1000);
+let remoteRandomNumber = null;
+
 // Connection quality monitoring
 let packetReceiveCount = 0;
 let lastPacketRateCheck = Date.now();
@@ -71,8 +75,8 @@ let gameLoopInterval = null;
 
 // Simplified connection handshake
 function establishConnection() {
-    // Send connection request with our session ID
-    const msg = { a: "connect", sid: sessionId };
+    // Send connection request with session ID and random number for ball owner determination
+    const msg = { a: "connect", sid: sessionId, rand: myRandomNumber };
     SpixiAppSdk.sendNetworkData(JSON.stringify(msg));
     lastDataSent = SpixiTools.getTimestamp();
 }
@@ -210,10 +214,13 @@ function startGame() {
     gameStartTime = Date.now();
     gameState.gameStarted = true;
     
-    // Determine ball owner (consistent across both players)
-    const combinedId = sessionId + remotePlayerAddress;
-    const hash = Array.from(combinedId).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    gameState.isBallOwner = hash % 2 === (sessionId < remotePlayerAddress ? 0 : 1);
+    // Determine ball owner based on random number comparison
+    // Higher number wins. If equal (rare), compare session IDs
+    if (myRandomNumber === remoteRandomNumber) {
+        gameState.isBallOwner = sessionId > remotePlayerAddress;
+    } else {
+        gameState.isBallOwner = myRandomNumber > remoteRandomNumber;
+    }
     
     // Update UI
     document.getElementById('startBtn').style.display = 'none';
@@ -742,11 +749,18 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
         
         switch(msg.a) {
             case "connect":
-                // Received connection request, reply back
+                // Received connection request, reply back with our random number
+                if (msg.rand !== undefined) {
+                    remoteRandomNumber = msg.rand;
+                }
                 if (!connectionEstablished) {
-                    SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "connect", sid: sessionId }));
+                    SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "connect", sid: sessionId, rand: myRandomNumber }));
                     lastDataSent = SpixiTools.getTimestamp();
-                    handleConnectionEstablished();
+                    
+                    // Only establish connection if we have both random numbers
+                    if (remoteRandomNumber !== null) {
+                        handleConnectionEstablished();
+                    }
                 }
                 break;
                 
