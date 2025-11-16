@@ -31,6 +31,15 @@ let gameState = {
     lastUpdate: 0
 };
 
+// Ball interpolation state for smooth sync
+let ballTarget = {
+    x: CANVAS_WIDTH / 2,
+    y: CANVAS_HEIGHT / 2,
+    vx: 0,
+    vy: 0
+};
+let ballInterpolationSpeed = 0.3; // Higher = faster catch-up (0.1 to 0.5)
+
 let canvas, ctx;
 let remotePlayerAddress = '';
 let sessionId = '';
@@ -247,6 +256,12 @@ function launchBall() {
         gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL * direction;
         gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
         
+        // Initialize target for smooth interpolation
+        ballTarget.x = gameState.ball.x;
+        ballTarget.y = gameState.ball.y;
+        ballTarget.vx = gameState.ball.vx;
+        ballTarget.vy = gameState.ball.vy;
+        
         // Notify other player and send state
         SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "launch" }));
         lastDataSent = SpixiTools.getTimestamp();
@@ -266,6 +281,9 @@ function gameLoop() {
         updateBall();
         checkCollisions();
         checkScore();
+    } else if (!gameState.isBallOwner && gameState.ball.vx !== 0) {
+        // Non-owner: smoothly interpolate ball position towards target
+        interpolateBall();
     }
     
     render();
@@ -274,6 +292,11 @@ function gameLoop() {
     const currentTime = Date.now();
     if (currentTime - lastDataSent >= PADDLE_UPDATE_RATE) {
         sendPaddlePosition();
+    }
+    
+    // Ball owner sends ball state periodically for smooth sync
+    if (gameState.isBallOwner && gameState.ball.vx !== 0 && currentTime - lastDataSent >= PADDLE_UPDATE_RATE * 2) {
+        sendBallState();
     }
 }
 
@@ -298,6 +321,24 @@ function updateBall() {
         gameState.ball.vy = -gameState.ball.vy;
         gameState.ball.y = Math.max(BALL_SIZE / 2, Math.min(CANVAS_HEIGHT - BALL_SIZE / 2, gameState.ball.y));
     }
+}
+
+function interpolateBall() {
+    // Smooth interpolation (lerp) towards target position
+    gameState.ball.x += (ballTarget.x - gameState.ball.x) * ballInterpolationSpeed;
+    gameState.ball.y += (ballTarget.y - gameState.ball.y) * ballInterpolationSpeed;
+    
+    // Also interpolate velocity for predictive motion between updates
+    gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * ballInterpolationSpeed;
+    gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * ballInterpolationSpeed;
+    
+    // Add small predictive movement based on current velocity
+    gameState.ball.x += gameState.ball.vx * 0.5;
+    gameState.ball.y += gameState.ball.vy * 0.5;
+    
+    // Keep ball in bounds
+    gameState.ball.x = Math.max(0, Math.min(CANVAS_WIDTH, gameState.ball.x));
+    gameState.ball.y = Math.max(BALL_SIZE / 2, Math.min(CANVAS_HEIGHT - BALL_SIZE / 2, gameState.ball.y));
 }
 
 function checkCollisions() {
@@ -381,6 +422,12 @@ function resetBall() {
     gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL * direction;
     gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
     
+    // Reset target for smooth interpolation
+    ballTarget.x = gameState.ball.x;
+    ballTarget.y = gameState.ball.y;
+    ballTarget.vx = gameState.ball.vx;
+    ballTarget.vy = gameState.ball.vy;
+    
     sendBallState();
 }
 
@@ -455,6 +502,14 @@ function restartGame() {
         gameStarted: false,
         gameEnded: false,
         lastUpdate: 0
+    };
+    
+    // Reset ball interpolation target
+    ballTarget = {
+        x: CANVAS_WIDTH / 2,
+        y: CANVAS_HEIGHT / 2,
+        vx: 0,
+        vy: 0
     };
     
     localPlayerReady = false;
@@ -603,10 +658,23 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
             case "ball":
                 // Receive ball state from ball owner
                 if (!gameState.isBallOwner) {
-                    gameState.ball.x = msg.x;
-                    gameState.ball.y = msg.y;
-                    gameState.ball.vx = msg.vx;
-                    gameState.ball.vy = msg.vy;
+                    // Update target for smooth interpolation
+                    ballTarget.x = msg.x;
+                    ballTarget.y = msg.y;
+                    ballTarget.vx = msg.vx;
+                    ballTarget.vy = msg.vy;
+                    
+                    // If ball just started or is far away, snap to position
+                    const distance = Math.sqrt(
+                        Math.pow(gameState.ball.x - msg.x, 2) + 
+                        Math.pow(gameState.ball.y - msg.y, 2)
+                    );
+                    if (gameState.ball.vx === 0 || distance > 100) {
+                        gameState.ball.x = msg.x;
+                        gameState.ball.y = msg.y;
+                        gameState.ball.vx = msg.vx;
+                        gameState.ball.vy = msg.vy;
+                    }
                 }
                 break;
                 
