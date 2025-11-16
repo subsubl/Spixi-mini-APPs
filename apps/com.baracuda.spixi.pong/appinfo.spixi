@@ -2,6 +2,6 @@ caVersion = 0
 id = com.baracuda.spixi.pong
 publisher = Baracuda
 name = Pong
-version = 1.6.1
+version = 1.6.2
 capabilities = multiUser
 maxUsers = 2
