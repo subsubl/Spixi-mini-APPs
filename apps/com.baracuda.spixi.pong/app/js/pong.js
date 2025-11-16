@@ -39,7 +39,7 @@ let ballTarget = {
     vy: 0
 };
 let ballInterpolationSpeed = 0.5; // Higher = faster catch-up
-let lastBallUpdate = 0;
+let lastBallUpdate = Date.now();
 const BALL_UPDATE_RATE = 16; // Send every 16ms (60fps) for smooth sync
 
 let canvas, ctx;
@@ -246,7 +246,7 @@ function startGame() {
     }
     
     gameState.gameStarted = true;
-    gameState.lastUpdate = SpixiTools.getTimestamp();
+    gameState.lastUpdate = Date.now();
     
     // Reset ball position and target
     gameState.ball.x = CANVAS_WIDTH / 2;
@@ -317,8 +317,9 @@ function gameLoop() {
     render();
     
     // Send paddle position frequently for real-time updates
-    const currentTime = Date.now();
-    if (currentTime - lastDataSent >= PADDLE_UPDATE_RATE) {
+    const currentTime = SpixiTools.getTimestamp();
+    const timeSinceLastSend = (Date.now() - lastDataSent * 1000);
+    if (timeSinceLastSend >= PADDLE_UPDATE_RATE) {
         sendPaddlePosition();
     }
     
@@ -574,9 +575,9 @@ function exitGame() {
         clearInterval(pingInterval);
         pingInterval = null;
     }
-    if (helloPingInterval) {
-        clearInterval(helloPingInterval);
-        helloPingInterval = null;
+    if (autoStartTimer) {
+        clearTimeout(autoStartTimer);
+        autoStartTimer = null;
     }
     // Use spixiAction with "close" to properly exit webview
     SpixiAppSdk.spixiAction("close");
@@ -584,12 +585,14 @@ function exitGame() {
 
 // Network functions
 function sendPaddlePosition() {
-    lastDataSent = Date.now();
+    const currentTime = SpixiTools.getTimestamp();
+    lastDataSent = currentTime;
     SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "paddle", y: Math.round(gameState.localPaddle.y) }));
 }
 
 function sendBallState() {
-    lastDataSent = SpixiTools.getTimestamp();
+    const currentTime = SpixiTools.getTimestamp();
+    lastDataSent = currentTime;
     const b = gameState.ball;
     // Use compact packet: shortened keys and minimal precision
     SpixiAppSdk.sendNetworkData(JSON.stringify({
@@ -602,7 +605,8 @@ function sendBallState() {
 }
 
 function sendLifeUpdate() {
-    lastDataSent = SpixiTools.getTimestamp();
+    const currentTime = SpixiTools.getTimestamp();
+    lastDataSent = currentTime;
     SpixiAppSdk.sendNetworkData(JSON.stringify({
         a: "lives",
         local: gameState.localPaddle.lives,
@@ -611,7 +615,8 @@ function sendLifeUpdate() {
 }
 
 function sendEndGame() {
-    lastDataSent = SpixiTools.getTimestamp();
+    const currentTime = SpixiTools.getTimestamp();
+    lastDataSent = currentTime;
     SpixiAppSdk.sendNetworkData(JSON.stringify({
         a: "end",
         local: gameState.localPaddle.lives,
