@@ -110,19 +110,25 @@ yourapp/
 
 ```
 caVersion = 0
-id = com.company.appname          # Reverse DNS notation
-publisher = Your Name
-name = App Display Name
-version = 1.0.0
-capabilities = multiUser          # or singleUser, authentication, etc.
+id = com.company.appname          # Reverse DNS notation (REQUIRED)
+publisher = Your Name             # REQUIRED
+name = App Display Name          # REQUIRED
+version = 1.0.0                  # REQUIRED
+capabilities = multiUser         # REQUIRED - or singleUser, authentication, etc.
+maxUsers = 2                     # Optional - limit concurrent users
+minUsers = 1                     # Optional - minimum users to start
+protocols = com.company.protocol # Optional - custom protocol handler
+icon = icon.png                  # Optional - explicit icon reference
 ```
 
-**Capabilities**:
+**Capabilities** (comma-separated):
 - `singleUser` - Runs independently (video-test, auth)
 - `multiUser` - Requires peer connection (tictactoe, whiteboard)
 - `authentication` - Can authenticate users via QR codes
 - `transactionSigning` - Can sign blockchain transactions
 - `registeredNamesManagement` - Can manage decentralized names
+
+**After Packing**: The packer adds `image`, `contentUrl`, `checksum`, and `contentSize` fields to the `.spixi` file.
 
 ## Development Workflow
 
@@ -171,10 +177,54 @@ if (otherMovesCount > myMovesCount) {
 - **Real-time Collab**: `com.ixilabs.spixi.whiteboard` - Batched data transmission
 - **Protocol Extension**: `com.mostnonameuser.spixi.aiassistant` - Custom protocol handlers
 
+## Batched Data Transmission Pattern
+
+For real-time collaborative apps, batch frequent updates to reduce network overhead:
+
+```javascript
+// Whiteboard pattern - accumulate changes in buffer
+dataBatch = "";
+addPositionToBatch(data) {
+    this.dataBatch += data + ";";
+}
+
+// Send buffer periodically (every 200ms)
+setInterval(() => { 
+    if (this.dataBatch !== "") {
+        SpixiAppSdk.sendNetworkData(this.dataBatch);
+        this.dataBatch = "";
+    }
+}, 200);
+```
+
+See `whiteboard.js` for full implementation.
+
+## Error Handling Pattern
+
+SDK functions use `try/catch` internally. The `executeUiCommand()` wrapper in `spixi-tools.js` catches errors and displays alerts with stack traces during development. Production apps should override callbacks to handle edge cases gracefully.
+
+## Testing Your App
+
+1. **Local Testing**: Open `app/index.html` directly in browser - limited SDK functions will work
+2. **Spixi Testing**: Load app in Spixi client for full SDK testing
+3. **Multi-user Testing**: Use two Spixi instances to test network communication
+4. **Storage Testing**: Use `mini-apps-test` app to verify storage operations sequence
+
+## Repository Structure
+
+```
+mini-apps-sdk/     # Source of truth for SDK files - copy to each app
+apps/              # Example Mini Apps - each is a standalone package
+app-packer/        # Browser tool to generate .zip/.spixi/.png for deployment
+packed/            # Sample packaged apps showing final output format
+```
+
 ## What NOT to Do
 
-- ❌ Don't modify `spixi-app-sdk.js` or `spixi-tools.js`
+- ❌ Don't modify `spixi-app-sdk.js` or `spixi-tools.js` - copy them unchanged
 - ❌ Don't call `executeUiCommand()` directly - it's internal SDK machinery
 - ❌ Don't store data without base64 encoding - Spixi expects it
 - ❌ Don't forget `fireOnLoad()` - app won't initialize properly
 - ❌ Don't use `&&` in terminal commands (Windows PowerShell) - use `;` instead
+- ❌ Don't rely on external CDNs - bundle all dependencies for offline use
+- ❌ Don't use Node.js or build tools - Mini Apps are pure client-side HTML/CSS/JS

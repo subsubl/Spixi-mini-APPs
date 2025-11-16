@@ -21,69 +21,61 @@ let gameState = {
     ball: {
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT / 2,
-        vx: BALL_SPEED_INITIAL,
-        vy: BALL_SPEED_INITIAL * 0.5
+        vx: 0,
+        vy: 0
     },
-    isHost: false,
+    isBallOwner: false, // Who controls the ball (randomly assigned)
+    isLeftPlayer: false, // Which side we're on (for rendering)
     gameStarted: false,
     gameEnded: false,
-    waitingForStart: true,
     lastUpdate: 0
 };
 
 let canvas, ctx;
 let remotePlayerAddress = '';
+let sessionId = '';
 let playerLastSeen = 0;
 let lastDataSent = 0;
 let keysPressed = {};
 let touchControlActive = null;
-let helloReceived = false;
-let helloPingInterval = null;
-let bothUsersPresent = false;
+let connectionEstablished = false;
 let localPlayerReady = false;
 let remotePlayerReady = false;
 let countdownActive = false;
 let countdownValue = 3;
-let ballActive = false;
-let waitingForShoot = false;
 
 // Network ping interval
 let pingInterval = null;
 let gameLoopInterval = null;
 
-function startHelloPing() {
-    // Clear any existing interval
-    if (helloPingInterval) {
-        clearInterval(helloPingInterval);
-    }
-    
-    // Send hello immediately
-    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"h"}));
+// Simplified connection handshake
+function establishConnection() {
+    // Send connection request with our session ID
+    const msg = { a: "connect", sid: sessionId };
+    SpixiAppSdk.sendNetworkData(JSON.stringify(msg));
     lastDataSent = SpixiTools.getTimestamp();
-    
-    // Ping every second until we get a response
-    helloPingInterval = setInterval(() => {
-        if (!bothUsersPresent) {
-            SpixiAppSdk.sendNetworkData(JSON.stringify({a:"h"}));
-            lastDataSent = SpixiTools.getTimestamp();
-        } else {
-            clearInterval(helloPingInterval);
-            helloPingInterval = null;
-            // Start regular ping interval
-            if (!pingInterval) {
-                pingInterval = setInterval(regularPing, 2000);
-            }
-        }
-    }, 1000);
 }
 
-function regularPing() {
-    const currentTime = SpixiTools.getTimestamp();
-    if (currentTime - lastDataSent < 2) {
-        return;
+function handleConnectionEstablished() {
+    connectionEstablished = true;
+    
+    // Start regular ping
+    if (!pingInterval) {
+        pingInterval = setInterval(() => {
+            const currentTime = SpixiTools.getTimestamp();
+            if (currentTime - lastDataSent >= 2) {
+                lastDataSent = currentTime;
+                SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "ping" }));
+            }
+        }, 2000);
     }
-    lastDataSent = currentTime;
-    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"p"}));
+    
+    // Show ready screen
+    document.getElementById('waiting-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('status-text').textContent = 'Press START when ready!';
+    document.getElementById('startBtn').style.display = 'inline-block';
+    document.getElementById('startBtn').disabled = false;
 }
 
 function initGame() {
@@ -155,11 +147,15 @@ function setupControls() {
     const startBtn = document.getElementById('startBtn');
     if (startBtn) {
         startBtn.addEventListener('click', () => {
-            if (bothUsersPresent && !localPlayerReady) {
+            if (connectionEstablished && !localPlayerReady) {
                 localPlayerReady = true;
                 startBtn.disabled = true;
                 startBtn.textContent = 'Waiting for opponent...';
-                sendPlayerReady();
+                
+                // Send ready message
+                SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "ready" }));
+                lastDataSent = SpixiTools.getTimestamp();
+                
                 checkBothPlayersReady();
             }
         });
@@ -169,8 +165,8 @@ function setupControls() {
     const shootBtn = document.getElementById('shootBtn');
     if (shootBtn) {
         shootBtn.addEventListener('click', () => {
-            if (waitingForShoot && gameState.isHost) {
-                shootBall();
+            if (gameState.isBallOwner && gameState.ball.vx === 0) {
+                launchBall();
             }
         });
     }
@@ -209,21 +205,23 @@ function startCountdown() {
 }
 
 function startGame() {
-    document.getElementById('waiting-screen').style.display = 'none';
-    document.getElementById('game-screen').style.display = 'block';
     document.getElementById('startBtn').style.display = 'none';
     
-    if (gameState.isHost) {
+    // Randomly determine who controls the ball
+    // Use both session IDs for deterministic randomness
+    const combinedId = sessionId + remotePlayerAddress;
+    const hash = Array.from(combinedId).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    gameState.isBallOwner = hash % 2 === (sessionId < remotePlayerAddress ? 0 : 1);
+    
+    if (gameState.isBallOwner) {
         document.getElementById('status-text').textContent = 'Click SHOOT to start!';
         document.getElementById('shootBtn').style.display = 'inline-block';
-        waitingForShoot = true;
     } else {
-        document.getElementById('status-text').textContent = 'Waiting for opponent to shoot...';
+        document.getElementById('status-text').textContent = 'Opponent will shoot...';
         document.getElementById('shootBtn').style.display = 'none';
     }
     
     gameState.gameStarted = true;
-    gameState.waitingForStart = false;
     gameState.lastUpdate = SpixiTools.getTimestamp();
     
     // Ball stays centered until shot
@@ -231,7 +229,6 @@ function startGame() {
     gameState.ball.y = CANVAS_HEIGHT / 2;
     gameState.ball.vx = 0;
     gameState.ball.vy = 0;
-    ballActive = false;
     
     // Start game loop
     if (!gameLoopInterval) {
@@ -239,22 +236,21 @@ function startGame() {
     }
 }
 
-function shootBall() {
-    if (!ballActive && gameState.isHost) {
-        waitingForShoot = false;
-        ballActive = true;
+function launchBall() {
+    if (gameState.ball.vx === 0 && gameState.isBallOwner) {
         document.getElementById('shootBtn').style.display = 'none';
         document.getElementById('status-text').textContent = 'Game On!';
         
-        // Initialize ball velocity
-        const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
+        // Initialize ball velocity - random angle and direction
+        const angle = (Math.random() * Math.PI / 3) - Math.PI / 6; // -30° to +30°
         const direction = Math.random() < 0.5 ? 1 : -1;
         gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL * direction;
         gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
         
-        // Notify other player
-        sendShootNotification();
-        setTimeout(() => sendGameState(), 50);
+        // Notify other player and send state
+        SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "launch" }));
+        lastDataSent = SpixiTools.getTimestamp();
+        setTimeout(() => sendBallState(), 50);
     }
 }
 
@@ -265,7 +261,8 @@ function gameLoop() {
     
     updatePaddle();
     
-    if (gameState.isHost && ballActive) {
+    // Only ball owner updates ball physics
+    if (gameState.isBallOwner && gameState.ball.vx !== 0) {
         updateBall();
         checkCollisions();
         checkScore();
@@ -304,8 +301,8 @@ function updateBall() {
 }
 
 function checkCollisions() {
-    const localPaddleX = gameState.isHost ? 20 : CANVAS_WIDTH - 20 - PADDLE_WIDTH;
-    const remotePaddleX = gameState.isHost ? CANVAS_WIDTH - 20 - PADDLE_WIDTH : 20;
+    const localPaddleX = gameState.isLeftPlayer ? 20 : CANVAS_WIDTH - 20 - PADDLE_WIDTH;
+    const remotePaddleX = gameState.isLeftPlayer ? CANVAS_WIDTH - 20 - PADDLE_WIDTH : 20;
     
     // Local paddle collision
     if (gameState.ball.x - BALL_SIZE / 2 <= localPaddleX + PADDLE_WIDTH &&
@@ -313,13 +310,14 @@ function checkCollisions() {
         gameState.ball.y >= gameState.localPaddle.y &&
         gameState.ball.y <= gameState.localPaddle.y + PADDLE_HEIGHT) {
         
-        gameState.ball.vx = Math.abs(gameState.ball.vx) * (gameState.isHost ? 1 : -1);
+        gameState.ball.vx = Math.abs(gameState.ball.vx) * (gameState.isLeftPlayer ? 1 : -1);
         gameState.ball.vx += gameState.ball.vx > 0 ? BALL_SPEED_INCREMENT : -BALL_SPEED_INCREMENT;
         
         const relativeIntersectY = (gameState.localPaddle.y + PADDLE_HEIGHT / 2) - gameState.ball.y;
         gameState.ball.vy = -relativeIntersectY * 0.15;
         
-        gameState.ball.x = localPaddleX + (gameState.isHost ? PADDLE_WIDTH + BALL_SIZE / 2 : -BALL_SIZE / 2);
+        gameState.ball.x = localPaddleX + (gameState.isLeftPlayer ? PADDLE_WIDTH + BALL_SIZE / 2 : -BALL_SIZE / 2);
+        sendBallState(); // Send ball state on collision
     }
     
     // Remote paddle collision
@@ -328,36 +326,47 @@ function checkCollisions() {
         gameState.ball.y >= gameState.remotePaddle.y &&
         gameState.ball.y <= gameState.remotePaddle.y + PADDLE_HEIGHT) {
         
-        gameState.ball.vx = Math.abs(gameState.ball.vx) * (gameState.isHost ? -1 : 1);
+        gameState.ball.vx = Math.abs(gameState.ball.vx) * (gameState.isLeftPlayer ? -1 : 1);
         gameState.ball.vx += gameState.ball.vx > 0 ? BALL_SPEED_INCREMENT : -BALL_SPEED_INCREMENT;
         
         const relativeIntersectY = (gameState.remotePaddle.y + PADDLE_HEIGHT / 2) - gameState.ball.y;
         gameState.ball.vy = -relativeIntersectY * 0.15;
         
-        gameState.ball.x = remotePaddleX + (gameState.isHost ? -BALL_SIZE / 2 : PADDLE_WIDTH + BALL_SIZE / 2);
+        gameState.ball.x = remotePaddleX + (gameState.isLeftPlayer ? -BALL_SIZE / 2 : PADDLE_WIDTH + BALL_SIZE / 2);
+        sendBallState(); // Send ball state on collision
     }
 }
 
 function checkScore() {
     if (gameState.ball.x < 0) {
-        // Local player missed - loses a life
-        gameState.localPaddle.lives--;
+        // Left player missed
+        if (gameState.isLeftPlayer) {
+            gameState.localPaddle.lives--;
+        } else {
+            gameState.remotePaddle.lives--;
+        }
         updateLivesDisplay();
-        if (gameState.localPaddle.lives <= 0) {
-            endGame(false);
+        
+        if (gameState.localPaddle.lives <= 0 || gameState.remotePaddle.lives <= 0) {
+            endGame(gameState.localPaddle.lives > 0);
         } else {
             resetBall();
-            sendGameState();
+            sendLifeUpdate();
         }
     } else if (gameState.ball.x > CANVAS_WIDTH) {
-        // Remote player missed - loses a life
-        gameState.remotePaddle.lives--;
+        // Right player missed
+        if (gameState.isLeftPlayer) {
+            gameState.remotePaddle.lives--;
+        } else {
+            gameState.localPaddle.lives--;
+        }
         updateLivesDisplay();
-        if (gameState.remotePaddle.lives <= 0) {
-            endGame(true);
+        
+        if (gameState.localPaddle.lives <= 0 || gameState.remotePaddle.lives <= 0) {
+            endGame(gameState.localPaddle.lives > 0);
         } else {
             resetBall();
-            sendGameState();
+            sendLifeUpdate();
         }
     }
 }
@@ -371,6 +380,8 @@ function resetBall() {
     
     gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL * direction;
     gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
+    
+    sendBallState();
 }
 
 function updateLivesDisplay() {
@@ -395,11 +406,11 @@ function render() {
     
     // Draw paddles
     ctx.fillStyle = '#4299e1';
-    const localPaddleX = gameState.isHost ? 20 : CANVAS_WIDTH - 20 - PADDLE_WIDTH;
+    const localPaddleX = gameState.isLeftPlayer ? 20 : CANVAS_WIDTH - 20 - PADDLE_WIDTH;
     ctx.fillRect(localPaddleX, gameState.localPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
     
     ctx.fillStyle = '#f56565';
-    const remotePaddleX = gameState.isHost ? CANVAS_WIDTH - 20 - PADDLE_WIDTH : 20;
+    const remotePaddleX = gameState.isLeftPlayer ? CANVAS_WIDTH - 20 - PADDLE_WIDTH : 20;
     ctx.fillRect(remotePaddleX, gameState.remotePaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
     
     // Draw ball
@@ -439,18 +450,16 @@ function restartGame() {
             vx: 0,
             vy: 0
         },
-        isHost: gameState.isHost,
+        isBallOwner: gameState.isBallOwner,
+        isLeftPlayer: gameState.isLeftPlayer,
         gameStarted: false,
         gameEnded: false,
-        waitingForStart: false,
         lastUpdate: 0
     };
     
     localPlayerReady = false;
     remotePlayerReady = false;
     countdownActive = false;
-    ballActive = false;
-    waitingForShoot = false;
     
     document.getElementById('game-over-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'block';
@@ -463,7 +472,8 @@ function restartGame() {
     updateLivesDisplay();
     
     if (remotePlayerAddress !== '') {
-        sendRestartRequest();
+        SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "restart" }));
+        lastDataSent = SpixiTools.getTimestamp();
     }
 }
 
@@ -487,49 +497,37 @@ function exitGame() {
 // Network functions
 function sendPaddlePosition() {
     lastDataSent = Date.now();
-    // Optimized: a=action, y=position (rounded to int)
-    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"m",y:Math.round(gameState.localPaddle.y)}));
+    SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "paddle", y: Math.round(gameState.localPaddle.y) }));
 }
 
-function sendStartGame() {
+function sendBallState() {
     lastDataSent = SpixiTools.getTimestamp();
-    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"s"}));
-}
-
-function sendGameState() {
-    lastDataSent = SpixiTools.getTimestamp();
-    // Optimized: a=action, b=ball(x,y,vx,vy rounded), l=local lives, r=remote lives
     const b = gameState.ball;
     SpixiAppSdk.sendNetworkData(JSON.stringify({
-        a:"g",
-        b:{x:Math.round(b.x),y:Math.round(b.y),vx:b.vx.toFixed(2),vy:b.vy.toFixed(2)},
-        l:gameState.localPaddle.lives,
-        r:gameState.remotePaddle.lives
+        a: "ball",
+        x: Math.round(b.x),
+        y: Math.round(b.y),
+        vx: parseFloat(b.vx.toFixed(2)),
+        vy: parseFloat(b.vy.toFixed(2))
+    }));
+}
+
+function sendLifeUpdate() {
+    lastDataSent = SpixiTools.getTimestamp();
+    SpixiAppSdk.sendNetworkData(JSON.stringify({
+        a: "lives",
+        local: gameState.localPaddle.lives,
+        remote: gameState.remotePaddle.lives
     }));
 }
 
 function sendEndGame() {
     lastDataSent = SpixiTools.getTimestamp();
     SpixiAppSdk.sendNetworkData(JSON.stringify({
-        a:"e",
-        l:gameState.localPaddle.lives,
-        r:gameState.remotePaddle.lives
+        a: "end",
+        local: gameState.localPaddle.lives,
+        remote: gameState.remotePaddle.lives
     }));
-}
-
-function sendRestartRequest() {
-    lastDataSent = SpixiTools.getTimestamp();
-    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"r"}));
-}
-
-function sendPlayerReady() {
-    lastDataSent = SpixiTools.getTimestamp();
-    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"ready"}));
-}
-
-function sendShootNotification() {
-    lastDataSent = SpixiTools.getTimestamp();
-    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"shoot"}));
 }
 
 function saveGameState() {
@@ -547,18 +545,19 @@ function loadGameState(playerAddress) {
 }
 
 // Spixi SDK callbacks
-SpixiAppSdk.onInit = function(sessionId, userAddresses) {
+SpixiAppSdk.onInit = function(sid, userAddresses) {
+    sessionId = sid;
     const addresses = userAddresses.split(",");
     remotePlayerAddress = addresses[0];
     
-    // Determine host by comparing addresses
-    gameState.isHost = sessionId < remotePlayerAddress;
+    // Determine which side we're on (left or right)
+    gameState.isLeftPlayer = sessionId < remotePlayerAddress;
     
     initGame();
     loadGameState(remotePlayerAddress);
     
-    // Start hello ping sequence
-    startHelloPing();
+    // Start connection handshake
+    establishConnection();
     
     // Show waiting screen
     document.getElementById('waiting-screen').style.display = 'flex';
@@ -570,92 +569,67 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
     playerLastSeen = SpixiTools.getTimestamp();
     
     try {
-        const d = JSON.parse(data);
+        const msg = JSON.parse(data);
         
-        switch(d.a) {
-            case "h": // hello
-                // Always reply to hello if we haven't confirmed connection
-                if (!bothUsersPresent) {
-                    SpixiAppSdk.sendNetworkData(JSON.stringify({a:"h"}));
+        switch(msg.a) {
+            case "connect":
+                // Received connection request, reply back
+                if (!connectionEstablished) {
+                    SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "connect", sid: sessionId }));
                     lastDataSent = SpixiTools.getTimestamp();
-                }
-                
-                // Mark that we received hello from other user
-                if (!helloReceived) {
-                    helloReceived = true;
-                }
-                
-                // Once both have exchanged hellos, connection is established
-                if (helloReceived && !bothUsersPresent) {
-                    bothUsersPresent = true;
-                    // Both users present, show game screen with start button
-                    document.getElementById('waiting-screen').style.display = 'none';
-                    document.getElementById('game-screen').style.display = 'block';
-                    document.getElementById('status-text').textContent = 'Press START when ready!';
-                    document.getElementById('startBtn').style.display = 'inline-block';
-                    document.getElementById('startBtn').disabled = false;
-                    document.getElementById('shootBtn').style.display = 'none';
+                    handleConnectionEstablished();
                 }
                 break;
                 
-            case "ready": // player ready
+            case "ping":
+                // Connection keepalive
+                break;
+                
+            case "ready":
                 remotePlayerReady = true;
                 checkBothPlayersReady();
                 break;
                 
-            case "shoot": // ball shot
-                ballActive = true;
+            case "launch":
+                // Other player launched the ball
                 document.getElementById('status-text').textContent = 'Game On!';
                 break;
                 
-            case "p": // ping
-                // Connection alive
+            case "paddle":
+                // Update remote paddle position
+                gameState.remotePaddle.y = msg.y;
                 break;
                 
-            case "m": // paddle move
-                gameState.remotePaddle.y = d.y;
-                break;
-                
-            case "s": // start game
-                if (gameState.waitingForStart) {
-                    gameState.waitingForStart = false;
-                    startGame();
+            case "ball":
+                // Receive ball state from ball owner
+                if (!gameState.isBallOwner) {
+                    gameState.ball.x = msg.x;
+                    gameState.ball.y = msg.y;
+                    gameState.ball.vx = msg.vx;
+                    gameState.ball.vy = msg.vy;
                 }
                 break;
                 
-            case "g": // game state
-                if (!gameState.isHost) {
-                    const b = d.b;
-                    gameState.ball.x = b.x;
-                    gameState.ball.y = b.y;
-                    gameState.ball.vx = parseFloat(b.vx);
-                    gameState.ball.vy = parseFloat(b.vy);
-                    gameState.localPaddle.lives = d.r;
-                    gameState.remotePaddle.lives = d.l;
+            case "lives":
+                // Update lives from ball owner
+                if (!gameState.isBallOwner) {
+                    gameState.localPaddle.lives = msg.remote;
+                    gameState.remotePaddle.lives = msg.local;
                     updateLivesDisplay();
-                    
-                    // Activate ball if it has velocity
-                    if ((gameState.ball.vx !== 0 || gameState.ball.vy !== 0) && !ballActive) {
-                        ballActive = true;
-                    }
-                    
-                    if (gameState.localPaddle.lives <= 0) {
-                        endGame(false);
-                    } else if (gameState.remotePaddle.lives <= 0) {
-                        endGame(true);
-                    }
                 }
                 break;
                 
-            case "e": // end game
+            case "end":
+                // Game ended
                 if (!gameState.gameEnded) {
-                    gameState.localPaddle.lives = d.r;
-                    gameState.remotePaddle.lives = d.l;
-                    endGame(gameState.localPaddle.lives > gameState.remotePaddle.lives);
+                    gameState.localPaddle.lives = msg.remote;
+                    gameState.remotePaddle.lives = msg.local;
+                    endGame(gameState.localPaddle.lives > 0);
                 }
                 break;
                 
-            case "r": // restart
+            case "restart":
+                // Restart request
                 if (gameState.gameEnded) {
                     restartGame();
                 }
