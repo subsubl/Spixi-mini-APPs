@@ -1,0 +1,11 @@
+caVersion = 0
+id = com.baracuda.spixi.pong
+publisher = Baracuda
+name = Pong
+version = 1.0.1
+capabilities = multiUser
+maxUsers = 2
+image = com.baracuda.spixi.pong.png
+contentUrl = com.baracuda.spixi.pong.zip
+checksum = 264EDCD4C1951964FBE633EBCDDDD281991519445908029FCA4BCCCC564BB76B
+contentSize = 8614

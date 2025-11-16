@@ -10,13 +10,14 @@ const BALL_SIZE = 12;
 const PADDLE_SPEED = 8;
 const BALL_SPEED_INITIAL = 6;
 const BALL_SPEED_INCREMENT = 0.3;
-const MAX_SCORE = 11;
+const MAX_LIVES = 3;
 const FRAME_RATE = 60;
+const PADDLE_UPDATE_RATE = 16; // Send paddle updates ~60fps
 
 // Game state
 let gameState = {
-    localPaddle: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, score: 0 },
-    remotePaddle: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, score: 0 },
+    localPaddle: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, lives: MAX_LIVES },
+    remotePaddle: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, lives: MAX_LIVES },
     ball: {
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT / 2,
@@ -26,6 +27,7 @@ let gameState = {
     isHost: false,
     gameStarted: false,
     gameEnded: false,
+    waitingForStart: true,
     lastUpdate: 0
 };
 
@@ -60,6 +62,7 @@ function initGame() {
     
     // Show waiting screen initially
     document.getElementById('waiting-screen').style.display = 'flex';
+    updateLivesDisplay();
 }
 
 function setupControls() {
@@ -114,20 +117,40 @@ function setupControls() {
     downBtn.addEventListener('mousedown', () => { keysPressed['down'] = true; });
     downBtn.addEventListener('mouseup', () => { keysPressed['down'] = false; });
     
+    // Start button
+    const startBtn = document.getElementById('startBtn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            if (remotePlayerAddress !== '' && gameState.waitingForStart) {
+                gameState.waitingForStart = false;
+                sendStartGame();
+                startGame();
+            }
+        });
+    }
+    
     // Restart button
     document.getElementById('restartBtn').addEventListener('click', restartGame);
+    
+    // Exit button
+    const exitBtn = document.getElementById('exitBtn');
+    if (exitBtn) {
+        exitBtn.addEventListener('click', exitGame);
+    }
 }
 
 function startGame() {
     document.getElementById('waiting-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('status-text').textContent = 'Game Started!';
     
     gameState.gameStarted = true;
+    gameState.waitingForStart = false;
     gameState.lastUpdate = SpixiTools.getTimestamp();
     
     if (gameState.isHost) {
         resetBall();
-        sendGameState();
+        setTimeout(() => sendGameState(), 100);
     }
     
     // Start game loop
@@ -151,9 +174,9 @@ function gameLoop() {
     
     render();
     
-    // Send paddle position periodically
-    const currentTime = SpixiTools.getTimestamp();
-    if (currentTime - lastDataSent >= 0.05) {
+    // Send paddle position frequently for real-time updates
+    const currentTime = Date.now();
+    if (currentTime - lastDataSent >= PADDLE_UPDATE_RATE) {
         sendPaddlePosition();
     }
 }
@@ -218,18 +241,20 @@ function checkCollisions() {
 
 function checkScore() {
     if (gameState.ball.x < 0) {
-        gameState.remotePaddle.score++;
-        updateScoreDisplay();
-        if (gameState.remotePaddle.score >= MAX_SCORE) {
+        // Local player missed - loses a life
+        gameState.localPaddle.lives--;
+        updateLivesDisplay();
+        if (gameState.localPaddle.lives <= 0) {
             endGame(false);
         } else {
             resetBall();
             sendGameState();
         }
     } else if (gameState.ball.x > CANVAS_WIDTH) {
-        gameState.localPaddle.score++;
-        updateScoreDisplay();
-        if (gameState.localPaddle.score >= MAX_SCORE) {
+        // Remote player missed - loses a life
+        gameState.remotePaddle.lives--;
+        updateLivesDisplay();
+        if (gameState.remotePaddle.lives <= 0) {
             endGame(true);
         } else {
             resetBall();
@@ -249,9 +274,9 @@ function resetBall() {
     gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
 }
 
-function updateScoreDisplay() {
-    document.getElementById('local-score').textContent = gameState.localPaddle.score;
-    document.getElementById('remote-score').textContent = gameState.remotePaddle.score;
+function updateLivesDisplay() {
+    document.getElementById('local-score').textContent = gameState.localPaddle.lives;
+    document.getElementById('remote-score').textContent = gameState.remotePaddle.lives;
 }
 
 function render() {
@@ -299,7 +324,7 @@ function endGame(won) {
     document.getElementById('result-text').textContent = won ? 'You Win!' : 'You Lose!';
     document.getElementById('result-text').style.color = won ? '#48bb78' : '#f56565';
     document.getElementById('final-score').textContent = 
-        `Final Score: ${gameState.localPaddle.score} - ${gameState.remotePaddle.score}`;
+        `Final Lives: You ${gameState.localPaddle.lives} - ${gameState.remotePaddle.lives} Opponent`;
     
     saveGameState();
     sendEndGame();
@@ -307,8 +332,8 @@ function endGame(won) {
 
 function restartGame() {
     gameState = {
-        localPaddle: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, score: 0 },
-        remotePaddle: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, score: 0 },
+        localPaddle: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, lives: MAX_LIVES },
+        remotePaddle: { y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2, lives: MAX_LIVES },
         ball: {
             x: CANVAS_WIDTH / 2,
             y: CANVAS_HEIGHT / 2,
@@ -318,13 +343,14 @@ function restartGame() {
         isHost: gameState.isHost,
         gameStarted: false,
         gameEnded: false,
+        waitingForStart: false,
         lastUpdate: 0
     };
     
     document.getElementById('game-over-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'block';
     
-    updateScoreDisplay();
+    updateLivesDisplay();
     
     if (remotePlayerAddress !== '') {
         sendRestartRequest();
@@ -332,9 +358,17 @@ function restartGame() {
     }
 }
 
+function exitGame() {
+    if (gameLoopInterval) {
+        clearInterval(gameLoopInterval);
+        gameLoopInterval = null;
+    }
+    SpixiAppSdk.close();
+}
+
 // Network functions
 function sendPaddlePosition() {
-    lastDataSent = SpixiTools.getTimestamp();
+    lastDataSent = Date.now();
     const data = {
         action: "paddleMove",
         y: gameState.localPaddle.y,
@@ -343,13 +377,19 @@ function sendPaddlePosition() {
     SpixiAppSdk.sendNetworkData(JSON.stringify(data));
 }
 
+function sendStartGame() {
+    lastDataSent = SpixiTools.getTimestamp();
+    const data = { action: "startGame" };
+    SpixiAppSdk.sendNetworkData(JSON.stringify(data));
+}
+
 function sendGameState() {
     lastDataSent = SpixiTools.getTimestamp();
     const data = {
         action: "gameState",
         ball: gameState.ball,
-        localScore: gameState.localPaddle.score,
-        remoteScore: gameState.remotePaddle.score,
+        localLives: gameState.localPaddle.lives,
+        remoteLives: gameState.remotePaddle.lives,
         timestamp: lastDataSent
     };
     SpixiAppSdk.sendNetworkData(JSON.stringify(data));
@@ -359,8 +399,8 @@ function sendEndGame() {
     lastDataSent = SpixiTools.getTimestamp();
     const data = {
         action: "endGame",
-        localScore: gameState.localPaddle.score,
-        remoteScore: gameState.remotePaddle.score
+        localLives: gameState.localPaddle.lives,
+        remoteLives: gameState.remotePaddle.lives
     };
     SpixiAppSdk.sendNetworkData(JSON.stringify(data));
 }
@@ -396,12 +436,10 @@ SpixiAppSdk.onInit = function(sessionId, userAddresses) {
     initGame();
     loadGameState(remotePlayerAddress);
     
-    // Start game after short delay
-    setTimeout(() => {
-        if (remotePlayerAddress !== '') {
-            startGame();
-        }
-    }, 1000);
+    // Show waiting screen with start button
+    document.getElementById('waiting-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('status-text').textContent = 'Press Start to Begin!';
 };
 
 SpixiAppSdk.onNetworkData = function(senderAddress, data) {
@@ -419,26 +457,33 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                 gameState.remotePaddle.y = parsedData.y;
                 break;
                 
+            case "startGame":
+                if (gameState.waitingForStart) {
+                    gameState.waitingForStart = false;
+                    startGame();
+                }
+                break;
+                
             case "gameState":
                 if (!gameState.isHost) {
                     gameState.ball = parsedData.ball;
-                    gameState.localPaddle.score = parsedData.remoteScore;
-                    gameState.remotePaddle.score = parsedData.localScore;
-                    updateScoreDisplay();
+                    gameState.localPaddle.lives = parsedData.remoteLives;
+                    gameState.remotePaddle.lives = parsedData.localLives;
+                    updateLivesDisplay();
                     
-                    if (gameState.localPaddle.score >= MAX_SCORE) {
-                        endGame(true);
-                    } else if (gameState.remotePaddle.score >= MAX_SCORE) {
+                    if (gameState.localPaddle.lives <= 0) {
                         endGame(false);
+                    } else if (gameState.remotePaddle.lives <= 0) {
+                        endGame(true);
                     }
                 }
                 break;
                 
             case "endGame":
                 if (!gameState.gameEnded) {
-                    gameState.localPaddle.score = parsedData.remoteScore;
-                    gameState.remotePaddle.score = parsedData.localScore;
-                    endGame(gameState.localPaddle.score > gameState.remotePaddle.score);
+                    gameState.localPaddle.lives = parsedData.remoteLives;
+                    gameState.remotePaddle.lives = parsedData.localLives;
+                    endGame(gameState.localPaddle.lives > gameState.remotePaddle.lives);
                 }
                 break;
                 
@@ -459,8 +504,8 @@ SpixiAppSdk.onStorageData = function(key, value) {
             const savedState = JSON.parse(atob(value));
             if (savedState.gameEnded) {
                 gameState = savedState;
-                updateScoreDisplay();
-                endGame(gameState.localPaddle.score > gameState.remotePaddle.score);
+                updateLivesDisplay();
+                endGame(gameState.localPaddle.lives > gameState.remotePaddle.lives);
             }
         } catch (e) {
             console.error("Error loading saved state:", e);
