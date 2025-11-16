@@ -41,12 +41,20 @@ let ballTarget = {
 let ballInterpolationSpeed = 0.5; // Higher = faster catch-up
 let lastBallUpdate = Date.now();
 const BALL_UPDATE_RATE = 16; // Send every 16ms (60fps) for smooth sync
+const SYNC_RATE = 16; // Unified state update rate (60fps)
+
+// Paddle interpolation for smooth remote paddle
+let remotePaddleTarget = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
+const PADDLE_LERP_FACTOR = 0.4;
 
 let canvas, ctx;
 let remotePlayerAddress = '';
 let sessionId = '';
 let playerLastSeen = 0;
 let lastDataSent = 0;
+let lastSyncTime = 0;
+let frameCounter = 0;
+let lastSentPaddleY = 0;
 let keysPressed = {};
 let touchControlActive = null;
 let connectionEstablished = false;
@@ -276,6 +284,11 @@ function startGame() {
     ballTarget.vx = 0;
     ballTarget.vy = 0;
     
+    // Reset sync state
+    frameCounter = 0;
+    lastSyncTime = Date.now();
+    lastSentPaddleY = gameState.localPaddle.y;
+    
     // Start game loop
     if (!gameLoopInterval) {
         gameLoopInterval = setInterval(gameLoop, 1000 / FRAME_RATE);
@@ -302,7 +315,10 @@ function launchBall() {
         // Notify other player
         SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "launch" }));
         lastDataSent = SpixiTools.getTimestamp();
-        setTimeout(() => sendBallState(), 16);
+        
+        // Send initial game state immediately
+        lastSyncTime = 0; // Force immediate sync
+        sendGameState();
     }
 }
 
@@ -311,7 +327,11 @@ function gameLoop() {
         return;
     }
     
+    frameCounter++;
     updatePaddle();
+    
+    // Smooth interpolate remote paddle position
+    gameState.remotePaddle.y += (remotePaddleTarget - gameState.remotePaddle.y) * PADDLE_LERP_FACTOR;
     
     // Ball owner updates ball physics
     if (gameState.isBallOwner) {
@@ -333,20 +353,13 @@ function gameLoop() {
     
     render();
     
-    // Send paddle position frequently for real-time updates
-    const currentTime = SpixiTools.getTimestamp();
-    const timeSinceLastSend = (Date.now() - lastDataSent * 1000);
-    if (timeSinceLastSend >= PADDLE_UPDATE_RATE) {
-        sendPaddlePosition();
-    }
+    // Send unified game state at consistent rate
+    const currentTime = Date.now();
+    const timeSinceLastSync = currentTime - lastSyncTime;
     
-    // Ball owner sends ball state at 60fps when active
-    if (gameState.isBallOwner && gameState.ball.vx !== 0) {
-        const timeSinceLastBallUpdate = currentTime - lastBallUpdate;
-        if (timeSinceLastBallUpdate >= BALL_UPDATE_RATE) {
-            sendBallState();
-            lastBallUpdate = currentTime;
-        }
+    if (timeSinceLastSync >= SYNC_RATE) {
+        sendGameState();
+        lastSyncTime = currentTime;
     }
 }
 
@@ -374,18 +387,20 @@ function updateBall() {
 }
 
 function interpolateBall() {
-    // Smooth interpolation (lerp) towards target position
-    const lerpFactor = ballInterpolationSpeed;
-    gameState.ball.x += (ballTarget.x - gameState.ball.x) * lerpFactor;
-    gameState.ball.y += (ballTarget.y - gameState.ball.y) * lerpFactor;
+    // Advanced interpolation with prediction and smoothing
+    const lerpFactor = 0.3; // Slower lerp for smoother visuals
     
-    // Interpolate velocity
+    // Calculate prediction based on velocity
+    const predictedX = ballTarget.x + ballTarget.vx * 0.8;
+    const predictedY = ballTarget.y + ballTarget.vy * 0.8;
+    
+    // Interpolate towards predicted position
+    gameState.ball.x += (predictedX - gameState.ball.x) * lerpFactor;
+    gameState.ball.y += (predictedY - gameState.ball.y) * lerpFactor;
+    
+    // Smooth velocity interpolation
     gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * lerpFactor;
     gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * lerpFactor;
-    
-    // Add predictive movement
-    gameState.ball.x += gameState.ball.vx * 0.6;
-    gameState.ball.y += gameState.ball.vy * 0.6;
     
     // Keep ball visible and in bounds
     gameState.ball.x = Math.max(BALL_SIZE, Math.min(CANVAS_WIDTH - BALL_SIZE, gameState.ball.x));
@@ -479,7 +494,9 @@ function resetBall() {
     ballTarget.vx = gameState.ball.vx;
     ballTarget.vy = gameState.ball.vy;
     
-    sendBallState();
+    // Send updated state immediately
+    lastSyncTime = 0;
+    sendGameState();
 }
 
 function updateLivesDisplay() {
@@ -667,25 +684,42 @@ function exitGame() {
     SpixiAppSdk.spixiAction("close");
 }
 
-// Network functions
-function sendPaddlePosition() {
+// Network functions - Unified game state sync
+function sendGameState() {
     const currentTime = SpixiTools.getTimestamp();
     lastDataSent = currentTime;
-    SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "paddle", y: Math.round(gameState.localPaddle.y) }));
-}
-
-function sendBallState() {
-    const currentTime = SpixiTools.getTimestamp();
-    lastDataSent = currentTime;
-    const b = gameState.ball;
-    // Use compact packet: shortened keys and minimal precision
-    SpixiAppSdk.sendNetworkData(JSON.stringify({
-        a: "b",
-        x: Math.round(b.x),
-        y: Math.round(b.y),
-        vx: Number(b.vx.toFixed(1)),
-        vy: Number(b.vy.toFixed(1))
-    }));
+    
+    const paddleY = Math.round(gameState.localPaddle.y);
+    
+    // Only send if paddle moved or ball is active
+    const paddleMoved = Math.abs(paddleY - lastSentPaddleY) > 0;
+    const ballActive = gameState.ball.vx !== 0;
+    
+    if (!paddleMoved && !ballActive) {
+        return; // Skip sending if nothing changed
+    }
+    
+    lastSentPaddleY = paddleY;
+    
+    // Build unified state packet
+    const state = {
+        a: "state",
+        f: frameCounter, // Frame number for sync
+        p: paddleY // Paddle position
+    };
+    
+    // Include ball data only if this player owns the ball and it's active
+    if (gameState.isBallOwner && ballActive) {
+        const b = gameState.ball;
+        state.b = {
+            x: Math.round(b.x),
+            y: Math.round(b.y),
+            vx: Number(b.vx.toFixed(2)),
+            vy: Number(b.vy.toFixed(2))
+        };
+    }
+    
+    SpixiAppSdk.sendNetworkData(JSON.stringify(state));
 }
 
 function sendLifeUpdate() {
@@ -776,29 +810,30 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                 }
                 break;
                 
-            case "paddle":
-                // Update remote paddle position
-                gameState.remotePaddle.y = msg.y;
-                break;
+            case "state": // Unified game state update
+                // Update remote paddle target for smooth interpolation
+                if (msg.p !== undefined) {
+                    remotePaddleTarget = msg.p;
+                }
                 
-            case "b": // Optimized ball update
-                if (!gameState.isBallOwner) {
+                // Update ball state if included and we don't own the ball
+                if (msg.b && !gameState.isBallOwner) {
                     // Update target for smooth interpolation
-                    ballTarget.x = msg.x;
-                    ballTarget.y = msg.y;
-                    ballTarget.vx = msg.vx;
-                    ballTarget.vy = msg.vy;
+                    ballTarget.x = msg.b.x;
+                    ballTarget.y = msg.b.y;
+                    ballTarget.vx = msg.b.vx;
+                    ballTarget.vy = msg.b.vy;
                     
                     // Snap if ball just started or is very far away
                     const distance = Math.sqrt(
-                        Math.pow(gameState.ball.x - msg.x, 2) + 
-                        Math.pow(gameState.ball.y - msg.y, 2)
+                        Math.pow(gameState.ball.x - msg.b.x, 2) + 
+                        Math.pow(gameState.ball.y - msg.b.y, 2)
                     );
                     if (gameState.ball.vx === 0 || distance > 200) {
-                        gameState.ball.x = msg.x;
-                        gameState.ball.y = msg.y;
-                        gameState.ball.vx = msg.vx;
-                        gameState.ball.vy = msg.vy;
+                        gameState.ball.x = msg.b.x;
+                        gameState.ball.y = msg.b.y;
+                        gameState.ball.vx = msg.b.vx;
+                        gameState.ball.vy = msg.b.vy;
                     }
                 }
                 break;
