@@ -54,15 +54,15 @@ Feel free to use these as reference templates or extend them into your own Mini 
 
 ## Building Your Own Mini App
 
-Mini Apps are self-contained folders structured as:
+Mini Apps are self-contained folders that get zipped, structured as:
 ```
 yourapp/
 ├── appinfo.spixi
 ├── icon.png
 └── app/
-│   ├── index.html
-│   ├── js/
-│   └── css/
+    ├── index.html
+    ├── js/
+    └── css/
 ```
 
 Requirements:
