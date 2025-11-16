@@ -288,27 +288,16 @@ function gameLoop() {
     // Smooth interpolate remote paddle position
     gameState.remotePaddle.y += (remotePaddleTarget - gameState.remotePaddle.y) * PADDLE_LERP_FACTOR;
     
-    // Both players update ball physics
+    // Both players simulate ball movement using current velocity
     const ballHasVelocity = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
-    const targetHasVelocity = Math.abs(ballTarget.vx) > 0.1 || Math.abs(ballTarget.vy) > 0.1;
     
-    if (gameState.isBallOwner) {
-        // Ball owner: update physics locally
-        if (ballHasVelocity) {
-            updateBall();
+    if (ballHasVelocity) {
+        updateBall();
+        
+        // Only ball owner checks collisions and score
+        if (gameState.isBallOwner) {
             checkCollisions();
             checkScore();
-        }
-    } else {
-        // Non-owner: always interpolate toward received data
-        if (ballHasVelocity || targetHasVelocity) {
-            interpolateBall();
-        } else {
-            // Ball is stationary - sync to target
-            gameState.ball.x = ballTarget.x;
-            gameState.ball.y = ballTarget.y;
-            gameState.ball.vx = 0;
-            gameState.ball.vy = 0;
         }
     }
     
@@ -347,38 +336,7 @@ function updateBall() {
     }
 }
 
-function interpolateBall() {
-    // Advanced interpolation with prediction (60fps render from 10fps network data)
-    const lerpFactor = 0.2; // Slower lerp for smooth interpolation from 10fps updates
-    
-    // Check if we have valid target velocity
-    const hasVelocity = Math.abs(ballTarget.vx) > 0.1 || Math.abs(ballTarget.vy) > 0.1;
-    
-    if (hasVelocity) {
-        // Predict ahead more aggressively since updates are 10fps
-        const predictAhead = 6; // Predict 6 frames ahead to compensate for 10fps updates
-        const predictedX = ballTarget.x + ballTarget.vx * predictAhead;
-        const predictedY = ballTarget.y + ballTarget.vy * predictAhead;
-        
-        // Interpolate towards predicted position
-        gameState.ball.x += (predictedX - gameState.ball.x) * lerpFactor;
-        gameState.ball.y += (predictedY - gameState.ball.y) * lerpFactor;
-        
-        // Smooth velocity interpolation
-        gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * 0.3;
-        gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * 0.3;
-    } else {
-        // If no velocity in target, directly sync position
-        gameState.ball.x = ballTarget.x;
-        gameState.ball.y = ballTarget.y;
-        gameState.ball.vx = ballTarget.vx;
-        gameState.ball.vy = ballTarget.vy;
-    }
-    
-    // Keep ball visible and in bounds
-    gameState.ball.x = Math.max(BALL_SIZE, Math.min(CANVAS_WIDTH - BALL_SIZE, gameState.ball.x));
-    gameState.ball.y = Math.max(BALL_SIZE, Math.min(CANVAS_HEIGHT - BALL_SIZE, gameState.ball.y));
-}
+
 
 function checkCollisions() {
     const localPaddleX = gameState.isLeftPlayer ? 20 : CANVAS_WIDTH - 20 - PADDLE_WIDTH;
@@ -783,31 +741,30 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                     remotePaddleTarget = msg.p;
                 }
                 
-                // Update ball state if included (both owner and non-owner readjust)
-                if (msg.b) {
-                    // Always update target with latest data
-                    ballTarget.x = msg.b.x;
-                    ballTarget.y = msg.b.y;
-                    ballTarget.vx = msg.b.vx;
-                    ballTarget.vy = msg.b.vy;
+                // Non-owner readjusts ball when velocity changes (bounce detected)
+                if (msg.b && !gameState.isBallOwner) {
+                    const velocityChanged = 
+                        Math.abs(gameState.ball.vx - msg.b.vx) > 0.5 || 
+                        Math.abs(gameState.ball.vy - msg.b.vy) > 0.5;
                     
-                    // Calculate distance for snap decision
-                    const distance = Math.sqrt(
-                        Math.pow(gameState.ball.x - msg.b.x, 2) + 
-                        Math.pow(gameState.ball.y - msg.b.y, 2)
-                    );
-                    
-                    // More aggressive snapping for better sync
-                    const currentSpeed = Math.sqrt(gameState.ball.vx * gameState.ball.vx + gameState.ball.vy * gameState.ball.vy);
-                    const targetSpeed = Math.sqrt(msg.b.vx * msg.b.vx + msg.b.vy * msg.b.vy);
-                    
-                    // Snap if: starting/stopping, very far away, or speed changed significantly
-                    // Both players snap to ensure sync
-                    if (currentSpeed < 0.5 || distance > 150 || Math.abs(currentSpeed - targetSpeed) > 3) {
+                    if (velocityChanged) {
+                        // Bounce detected - resync position and velocity
                         gameState.ball.x = msg.b.x;
                         gameState.ball.y = msg.b.y;
                         gameState.ball.vx = msg.b.vx;
                         gameState.ball.vy = msg.b.vy;
+                    } else {
+                        // No bounce - just update velocity in case of drift
+                        const distance = Math.sqrt(
+                            Math.pow(gameState.ball.x - msg.b.x, 2) + 
+                            Math.pow(gameState.ball.y - msg.b.y, 2)
+                        );
+                        
+                        // Only correct if significantly off (late data)
+                        if (distance > 100) {
+                            gameState.ball.x = msg.b.x;
+                            gameState.ball.y = msg.b.y;
+                        }
                     }
                 }
                 break;
