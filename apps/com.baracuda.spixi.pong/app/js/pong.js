@@ -303,6 +303,9 @@ let lastSentPaddleY = 0;
 let keysPressed = {};
 let touchControlActive = null;
 let wheelVelocity = 0;
+let wheelHandle = null;
+let wheelTrack = null;
+let isDraggingWheel = false;
 let connectionEstablished = false;
 
 // Frame counter sync for out-of-order packet detection
@@ -443,20 +446,22 @@ function setupControls() {
     });
     
     // Scrolling wheel control
-    const wheelHandle = document.getElementById('wheelHandle');
+    wheelHandle = document.getElementById('wheelHandle');
     if (!wheelHandle) {
         console.error('Wheel handle not found');
         return;
     }
-    const wheelTrack = wheelHandle.parentElement;
+    wheelTrack = wheelHandle.parentElement;
     let isDragging = false;
     let wheelStartY = 0;
     let wheelCurrentY = 0;
     let lastWheelY = 0;
     let wheelUpdateTime = Date.now();
+    let wheelPaddleY = 0; // Track paddle position for wheel sync
     
     function handleWheelStart(clientY) {
         isDragging = true;
+        isDraggingWheel = true;
         wheelStartY = clientY;
         wheelCurrentY = wheelStartY;
         lastWheelY = wheelStartY;
@@ -479,32 +484,21 @@ function setupControls() {
         lastWheelY = clientY;
         wheelUpdateTime = now;
         
-        // Visual feedback - move handle within track bounds
+        // Map wheel position to paddle position directly
         const trackRect = wheelTrack.getBoundingClientRect();
-        const handleHeight = wheelHandle.offsetHeight;
-        const maxTravel = trackRect.height - handleHeight;
-        const wheelDelta = wheelCurrentY - wheelStartY;
+        const relativeY = clientY - trackRect.top;
+        const trackProgress = Math.max(0, Math.min(1, relativeY / trackRect.height));
         
-        // Clamp handle position
-        let newPosition = 50 + (wheelDelta / trackRect.height) * 100;
-        newPosition = Math.max(handleHeight / trackRect.height * 50, 
-                              Math.min(100 - handleHeight / trackRect.height * 50, newPosition));
-        
-        wheelHandle.style.top = newPosition + '%';
+        // Set paddle position directly from wheel (0 to CANVAS_HEIGHT - PADDLE_HEIGHT)
+        predictedPaddleY = trackProgress * (CANVAS_HEIGHT - PADDLE_HEIGHT);
     }
     
     function handleWheelEnd() {
         isDragging = false;
+        isDraggingWheel = false;
         wheelVelocity = 0;
         wheelHandle.classList.remove('dragging');
-        
-        // Reset handle to center with smooth transition
-        wheelHandle.style.transition = 'top 0.3s ease-out';
-        wheelHandle.style.top = '50%';
-        
-        setTimeout(() => {
-            wheelHandle.style.transition = '';
-        }, 300);
+        // Keep wheel at current paddle position (don't reset to center)
     }
     
     // Touch events
@@ -748,29 +742,45 @@ function gameLoop() {
 }
 
 function updatePaddle() {
-    const moveUp = keysPressed['up'];
-    const moveDown = keysPressed['down'];
-    
-    // Client-side prediction: Apply input immediately to predicted state
-    // This eliminates the lag between user input and visual response
-    
-    // Keyboard controls
-    if (moveUp) {
-        predictedPaddleY = Math.max(0, predictedPaddleY - PADDLE_SPEED);
-    }
-    if (moveDown) {
-        predictedPaddleY = Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, predictedPaddleY + PADDLE_SPEED);
-    }
-    
-    // Wheel control - velocity-based movement
-    if (wheelVelocity !== 0) {
-        // Negative velocity = drag down = paddle moves down
-        predictedPaddleY += wheelVelocity;
-        predictedPaddleY = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, predictedPaddleY));
+    // If wheel is being dragged, position is already set by handleWheelMove
+    if (!isDraggingWheel) {
+        const moveUp = keysPressed['up'];
+        const moveDown = keysPressed['down'];
+        
+        // Client-side prediction: Apply input immediately to predicted state
+        // This eliminates the lag between user input and visual response
+        
+        // Keyboard controls
+        if (moveUp) {
+            predictedPaddleY = Math.max(0, predictedPaddleY - PADDLE_SPEED);
+        }
+        if (moveDown) {
+            predictedPaddleY = Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, predictedPaddleY + PADDLE_SPEED);
+        }
     }
     
     // Use predicted paddle position for rendering and collision detection
     gameState.localPaddle.y = predictedPaddleY;
+    
+    // Update wheel handle position to match paddle
+    updateWheelPosition();
+}
+
+function updateWheelPosition() {
+    if (!wheelHandle || !wheelTrack) return;
+    
+    const trackRect = wheelTrack.getBoundingClientRect();
+    const handleHeight = wheelHandle.offsetHeight;
+    
+    // Calculate wheel position from paddle position
+    const paddleProgress = predictedPaddleY / (CANVAS_HEIGHT - PADDLE_HEIGHT);
+    const handlePosition = paddleProgress * 100;
+    
+    // Clamp position within track bounds
+    const clampedPosition = Math.max(handleHeight / trackRect.height * 50, 
+                                    Math.min(100 - handleHeight / trackRect.height * 50, handlePosition));
+    
+    wheelHandle.style.top = clampedPosition + '%';
 }
 
 /**
