@@ -548,23 +548,40 @@ function checkNetworkRateTest() {
 }
 
 // Simplified connection handshake with retry mechanism
+let connectionAttempts = 0;
+
 function establishConnection() {
     // Send connection request with session ID and random number for ball owner determination
     const msg = { a: "connect", sid: sessionId, rand: myRandomNumber };
     SpixiAppSdk.sendNetworkData(JSON.stringify(msg));
     lastDataSent = SpixiTools.getTimestamp();
+    connectionAttempts++;
     
-    // Keep sending connection packets every 500ms until we get a response
+    console.log(`Connection attempt ${connectionAttempts}...`);
+    
+    // Keep sending connection packets every 500ms indefinitely until connected
     if (!connectionRetryInterval) {
         connectionRetryInterval = setInterval(() => {
             if (!connectionEstablished) {
                 const msg = { a: "connect", sid: sessionId, rand: myRandomNumber };
                 SpixiAppSdk.sendNetworkData(JSON.stringify(msg));
                 lastDataSent = SpixiTools.getTimestamp();
+                connectionAttempts++;
+                
+                // Update waiting screen with attempt count every 10 attempts
+                if (connectionAttempts % 10 === 0) {
+                    console.log(`Still waiting for opponent... (${connectionAttempts} attempts)`);
+                    const connectionMessage = document.querySelector('.connection-message');
+                    if (connectionMessage) {
+                        const elapsed = Math.floor(connectionAttempts * 0.5);
+                        connectionMessage.textContent = `Waiting ${elapsed}s... Will connect when opponent joins.`;
+                    }
+                }
             } else {
                 // Connection established - stop retry attempts
                 clearInterval(connectionRetryInterval);
                 connectionRetryInterval = null;
+                console.log(`Connected after ${connectionAttempts} attempts`);
             }
         }, 500);
     }
@@ -2101,14 +2118,17 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                 // Received connection request from remote player
                 if (msg.rand !== undefined) {
                     remoteRandomNumber = msg.rand;
+                    console.log('Received connection packet from opponent');
                 }
                 
-                // Always reply with our connection packet (fire and forget)
+                // ALWAYS reply with our connection packet (critical for bidirectional handshake)
+                // This ensures late joiners can connect even if other player already connected
                 SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "connect", sid: sessionId, rand: myRandomNumber }));
                 lastDataSent = SpixiTools.getTimestamp();
                 
-                // Only establish connection if we have both random numbers and not already connected
-                if (!connectionEstablished && remoteRandomNumber !== null) {
+                // Establish connection if we have both random numbers and not already connected
+                if (!connectionEstablished && remoteRandomNumber !== null && myRandomNumber !== null) {
+                    console.log(`Handshake complete - my:${myRandomNumber}, remote:${remoteRandomNumber}`);
                     handleConnectionEstablished();
                 }
                 break;
