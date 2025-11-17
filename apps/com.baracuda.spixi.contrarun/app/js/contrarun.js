@@ -44,6 +44,10 @@ let keepaliveInterval = null;
 let gameLoopInterval = null;
 let networkUpdateInterval = null;
 
+// Random number for determining host (like Pong's ball owner)
+let myRandomNumber = Math.floor(Math.random() * 1000);
+let remoteRandomNumber = null;
+
 // UI Elements
 const elements = {
     menuBtn: document.getElementById('menuBtn'),
@@ -163,10 +167,7 @@ SpixiAppSdk.onInit = function(sessionId, userAddresses) {
         gameState.localAddress = addresses[0].trim();
         gameState.remoteAddress = addresses[1].trim();
         
-        // Determine host (lower address)
-        gameState.isHost = gameState.localAddress < gameState.remoteAddress;
-        
-        console.log('Initialized - Host:', gameState.isHost);
+        console.log('Initialized - Starting connection handshake');
         startConnectionHandshake();
     }
 };
@@ -179,7 +180,8 @@ function startConnectionHandshake() {
         if (!gameState.connectionEstablished) {
             sendNetworkMessage({
                 action: 'connect',
-                sessionId: gameState.sessionId
+                sessionId: gameState.sessionId,
+                rand: myRandomNumber
             });
         } else {
             clearInterval(connectionRetryInterval);
@@ -190,6 +192,11 @@ function startConnectionHandshake() {
 
 function handleConnectionEstablished() {
     gameState.connectionEstablished = true;
+    
+    // Determine host using random numbers (like Pong's ball owner)
+    gameState.isHost = myRandomNumber > remoteRandomNumber;
+    console.log('Connection established - Host:', gameState.isHost, 'Random:', myRandomNumber, 'vs', remoteRandomNumber);
+    
     updateStatus('Connected', true);
     elements.connectionStatus.classList.add('connected');
     
@@ -213,12 +220,20 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
         
         switch(message.action) {
             case 'connect':
+                // Store remote random number
+                if (message.rand !== undefined) {
+                    remoteRandomNumber = message.rand;
+                }
+                
+                // Always reply with our connection packet (fire-and-forget)
                 sendNetworkMessage({
                     action: 'connect',
-                    sessionId: gameState.sessionId
+                    sessionId: gameState.sessionId,
+                    rand: myRandomNumber
                 });
                 
-                if (!gameState.connectionEstablished) {
+                // Only establish connection if we have both random numbers and not already connected
+                if (!gameState.connectionEstablished && remoteRandomNumber !== null) {
                     handleConnectionEstablished();
                 }
                 break;
