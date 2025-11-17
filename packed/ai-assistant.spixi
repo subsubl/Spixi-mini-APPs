@@ -9,5 +9,5 @@ minUsers =
 maxUsers = 
 protocols = com.mostnonameuser.aiassistant
 contentUrl = ai-assistant.zip
-checksum = 1931c62cca954bcbd1d68dbc4cbcf5decfad84b6f42e7ffff50423bf162df63d
+checksum = 358fa8bd9b42e9890909f7879996913320a49802799537898cae217902f1b42c
 contentSize = 89527

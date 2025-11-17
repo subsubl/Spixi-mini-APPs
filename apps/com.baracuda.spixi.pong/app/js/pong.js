@@ -27,8 +27,8 @@
  *    Result: Smooth prediction even when packets arrive out of order
  * 
  * 3. ENTITY INTERPOLATION (Smooth Remote Movement)
- *    - Remote paddle/ball positions lerp between network updates (every 100ms)
- *    - 60fps rendering interpolates 10fps network data smoothly
+ *    - Remote paddle/ball positions lerp between network updates (every 50ms)
+ *    - 60fps rendering interpolates 20fps network data smoothly
  *    - Paddle lerp factor: 0.25 (conservative for accuracy)
  *    - Ball lerp factor: 0.15 (smoother but more forgiving)
  *    Lerp formula: current += (target - current) * lerpFactor
@@ -80,7 +80,7 @@
  * 
  * NETWORK PROTOCOL:
  * 
- * State packet (sent every 100ms if changed):
+ * State packet (sent every 50ms if changed):
  *   {
  *     a: "state",           // Action type
  *     f: frameCounter,      // Frame number for sync
@@ -88,7 +88,8 @@
  *     seq: inputSequence,  // Input sequence number (only if changed)
  *     lastAck: seqNum,     // Acknowledgment of remote's inputs (only if changed)
  *     b: {                 // Ball state (only if moving toward me)
- *       x, y, vx, vy      // Position and velocity (mirrored to opponent's view)
+ *       x, y,             // Position (integers)
+ *       vx, vy            // Velocity as integers (*100 for 0.01 precision)
  *     }
  *   }
  * 
@@ -124,7 +125,7 @@ const BALL_SPEED_INITIAL = 6;
 const BALL_SPEED_INCREMENT = 0.3;
 const MAX_LIVES = 3;
 const FRAME_RATE = 60; // Render at 60fps
-const NETWORK_SEND_RATE = 100; // Send network updates at 10fps (100ms)
+const NETWORK_SEND_RATE = 50; // Send network updates at 20fps (50ms)
 
 // Game state
 let gameState = {
@@ -457,8 +458,8 @@ function launchBall() {
             b: {
                 x: Math.round(CANVAS_WIDTH - b.x), // Mirror X
                 y: Math.round(b.y),
-                vx: Number((-b.vx).toFixed(2)),   // Mirror velocity
-                vy: Number(b.vy.toFixed(2))
+                vx: Math.round(-b.vx * 100),   // Integer velocity (*100)
+                vy: Math.round(b.vy * 100)
             }
         }));
         lastDataSent = SpixiTools.getTimestamp();
@@ -1068,8 +1069,8 @@ function sendBallStateWithCollision() {
         t: Date.now(), // Collision event timestamp (milliseconds)
         x: Math.round(CANVAS_WIDTH - b.x), // Mirror X for opponent's view
         y: Math.round(b.y),
-        vx: Number((-b.vx).toFixed(2)),
-        vy: Number(b.vy.toFixed(2))
+        vx: Math.round(-b.vx * 100), // Integer velocity (*100)
+        vy: Math.round(b.vy * 100)
     };
     
     SpixiAppSdk.sendNetworkData(JSON.stringify(collisionMsg));
@@ -1193,8 +1194,8 @@ function sendGameState() {
         const newBallState = {
             x: Math.round(CANVAS_WIDTH - b.x), // Mirror X for opponent's view
             y: Math.round(b.y),
-            vx: Number((-b.vx).toFixed(2)),
-            vy: Number(b.vy.toFixed(2))
+            vx: Math.round(-b.vx * 100), // Integer velocity (*100 for precision)
+            vy: Math.round(b.vy * 100)
         };
         
         // Only include if changed significantly (position differs by >2px or velocity changed)
@@ -1511,18 +1512,19 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                     // Process ball velocity from launch message
                     if (msg.b) {
                         const mirroredX = CANVAS_WIDTH - msg.b.x;
-                        const mirroredVx = -msg.b.vx;
+                        const mirroredVx = -msg.b.vx / 100; // Convert integer to decimal
+                        const vy = msg.b.vy / 100;
                         
                         // Set as interpolation target
                         ballTarget.x = mirroredX;
                         ballTarget.y = msg.b.y;
                         ballTarget.vx = mirroredVx;
-                        ballTarget.vy = msg.b.vy;
+                        ballTarget.vy = vy;
                         
                         gameState.ball.x = mirroredX;
                         gameState.ball.y = msg.b.y;
                         gameState.ball.vx = mirroredVx;
-                        gameState.ball.vy = msg.b.vy;
+                        gameState.ball.vy = vy;
                         
                         // Ball owner has authority when launching
                         gameState.hasActiveBallAuthority = false;
@@ -1564,13 +1566,14 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                 if (msg.b) {
                     // Convert from sender's coordinate system to ours (mirror X)
                     const mirroredX = CANVAS_WIDTH - msg.b.x;
-                    const mirroredVx = -msg.b.vx;
+                    const mirroredVx = -msg.b.vx / 100; // Convert integer to decimal
+                    const vy = msg.b.vy / 100;
                     
                     // Set as interpolation target for smooth motion
                     ballTarget.x = mirroredX;
                     ballTarget.y = msg.b.y;
                     ballTarget.vx = mirroredVx;
-                    ballTarget.vy = msg.b.vy;
+                    ballTarget.vy = vy;
                     
                     // If we don't have authority, snap to remote state
                     // (they are simulating, we follow)
@@ -1578,7 +1581,7 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                         gameState.ball.x = mirroredX;
                         gameState.ball.y = msg.b.y;
                         gameState.ball.vx = mirroredVx;
-                        gameState.ball.vy = msg.b.vy;
+                        gameState.ball.vy = vy;
                     }
                 }
                 break;
@@ -1589,19 +1592,20 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                 if (msg.t !== undefined) {
                     // Convert from sender's coordinate system to ours (mirror X)
                     const mirroredX = CANVAS_WIDTH - msg.x;
-                    const mirroredVx = -msg.vx;
+                    const mirroredVx = -msg.vx / 100; // Convert integer to decimal
+                    const vy = msg.vy / 100;
                     
                     // Set as interpolation target
                     ballTarget.x = mirroredX;
                     ballTarget.y = msg.y;
                     ballTarget.vx = mirroredVx;
-                    ballTarget.vy = msg.vy;
+                    ballTarget.vy = vy;
                     
                     // Snap to their state immediately (they have authority now)
                     gameState.ball.x = mirroredX;
                     gameState.ball.y = msg.y;
                     gameState.ball.vx = mirroredVx;
-                    gameState.ball.vy = msg.vy;
+                    gameState.ball.vy = vy;
                     
                     // Transfer authority to them
                     gameState.hasActiveBallAuthority = false;
