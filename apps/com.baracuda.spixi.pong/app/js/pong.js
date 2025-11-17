@@ -150,7 +150,7 @@ function initAudioContext() {
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     } catch (e) {
-        console.warn('Web Audio API not supported');
+        // Web Audio API not supported in this environment
         soundEnabled = false;
     }
 }
@@ -443,7 +443,7 @@ function finishClockSync() {
         // (debug UI log removed)
         clockOffset = 0;
     } else if (goodSamples.length === 0) {
-        console.warn('No good clock sync samples (all high RTT) - using default offset 0');
+        // No good clock sync samples; using default offset 0
         clockOffset = 0;
     } else {
         // Use median offset from good samples for robustness
@@ -534,16 +534,13 @@ function checkNetworkRateTest() {
 }
 
 // Simplified connection handshake with retry mechanism
-let connectionAttempts = 0;
 
 function establishConnection() {
     // Send connection request with session ID and random number for ball owner determination
     const msg = { a: "connect", sid: sessionId, rand: myRandomNumber };
     SpixiAppSdk.sendNetworkData(JSON.stringify(msg));
     lastDataSent = SpixiTools.getTimestamp();
-    connectionAttempts++;
-    
-    // (debug UI log removed)
+    // (connection retry attempts in progress)
     
     // Keep sending connection packets every 500ms indefinitely until connected
     if (!connectionRetryInterval) {
@@ -552,17 +549,7 @@ function establishConnection() {
                 const msg = { a: "connect", sid: sessionId, rand: myRandomNumber };
                 SpixiAppSdk.sendNetworkData(JSON.stringify(msg));
                 lastDataSent = SpixiTools.getTimestamp();
-                connectionAttempts++;
-                
-                // Update waiting screen with attempt count every 10 attempts
-                if (connectionAttempts % 10 === 0) {
-                    // (debug UI log removed)
-                    const connectionMessage = document.querySelector('.connection-message');
-                    if (connectionMessage) {
-                        const elapsed = Math.floor(connectionAttempts * 0.5);
-                        connectionMessage.textContent = `Waiting ${elapsed}s... Will connect when opponent joins.`;
-                    }
-                }
+                // (connection retry - no UI log updates to keep clean)
             } else {
                 // Connection established - stop retry attempts
                 clearInterval(connectionRetryInterval);
@@ -673,7 +660,7 @@ function setupControls() {
     // Scrolling wheel control
     wheelHandle = document.getElementById('wheelHandle');
     if (!wheelHandle) {
-        console.error('Wheel handle not found');
+        // Wheel handle not found - nothing to set up
         return;
     }
     wheelTrack = wheelHandle.parentElement;
@@ -1895,8 +1882,7 @@ function validateFrameCounter(newFrameCounter) {
             frameCounterMismatchCount = Math.max(0, frameCounterMismatchCount - 1);
             return true; // Accept despite being out-of-order (might be legitimate latency variance)
         } else {
-            // Too many out-of-order packets - something's wrong
-            console.warn(`Out-of-order frame counter detected: got ${newFrameCounter}, expected > ${remoteFrameCounter}`);
+            // Too many out-of-order packets - reject as stale
             return false; // Reject stale packet
         }
     }
@@ -2322,7 +2308,7 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                 break;
         }
     } catch (e) {
-        console.error("Error parsing network data:", e);
+        // Error parsing network data - ignoring
     }
 };
 
@@ -2335,7 +2321,7 @@ SpixiAppSdk.onStorageData = function(key, value) {
             // Ignore saved state - we always want to start a new game
             // (debug info removed)
         } catch (e) {
-            console.error("Error parsing saved state:", e);
+            // Error parsing saved state - ignoring
         }
     }
 };
