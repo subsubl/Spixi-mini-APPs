@@ -349,6 +349,7 @@ let gameStartTime = 0;
 let pingInterval = null;
 let gameLoopInterval = null;
 let connectionRetryInterval = null;
+let disconnectCheckInterval = null;
 
 // Simplified connection handshake with retry mechanism
 function establishConnection() {
@@ -397,6 +398,23 @@ function handleConnectionEstablished() {
                 SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "ping" }));
             }
         }, 2000);
+    }
+    
+    // Start disconnect detection (check every 10 seconds)
+    if (!disconnectCheckInterval) {
+        disconnectCheckInterval = setInterval(() => {
+            const currentTime = SpixiTools.getTimestamp();
+            const timeSinceLastSeen = currentTime - playerLastSeen;
+            
+            // If no data received for 10 seconds, consider disconnected
+            if (timeSinceLastSeen >= 10) {
+                if (disconnectCheckInterval) {
+                    clearInterval(disconnectCheckInterval);
+                    disconnectCheckInterval = null;
+                }
+                handleOpponentDisconnect();
+            }
+        }, 10000);
     }
     
     // Transition to game screen
@@ -1303,6 +1321,10 @@ function performFullReset() {
         clearTimeout(autoStartTimer);
         autoStartTimer = null;
     }
+    if (disconnectCheckInterval) {
+        clearInterval(disconnectCheckInterval);
+        disconnectCheckInterval = null;
+    }
     
     // Reset all connection state
     connectionEstablished = false;
@@ -1375,14 +1397,49 @@ function performFullReset() {
 }
 
 function exitGame() {
+    // Notify opponent about exit
+    try {
+        SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "exit" }));
+    } catch (e) {
+        // Ignore send errors on exit
+    }
+    
     // Cleanup intervals
     if (gameLoopInterval) clearInterval(gameLoopInterval);
     if (pingInterval) clearInterval(pingInterval);
     if (connectionRetryInterval) clearInterval(connectionRetryInterval);
+    if (disconnectCheckInterval) clearInterval(disconnectCheckInterval);
     if (autoStartTimer) clearTimeout(autoStartTimer);
     
     // Close app
     SpixiAppSdk.spixiAction("close");
+}
+
+function handleOpponentDisconnect() {
+    // Stop game
+    gameState.gameEnded = true;
+    
+    if (gameLoopInterval) {
+        clearInterval(gameLoopInterval);
+        gameLoopInterval = null;
+    }
+    
+    // Show disconnect message
+    const statusText = document.getElementById('status-text');
+    if (statusText) {
+        statusText.textContent = 'Opponent Disconnected';
+        statusText.style.color = '#f56565';
+    }
+    
+    // If in game screen, show overlay message
+    const gameScreen = document.getElementById('game-screen');
+    if (gameScreen && gameScreen.classList.contains('screen-active')) {
+        const overlay = document.getElementById('canvasOverlay');
+        if (overlay) {
+            overlay.innerHTML = '<div style="padding: 2rem; background: rgba(0,0,0,0.9); border-radius: 12px; text-align: center;"><h2 style="color: #f56565; margin-bottom: 1rem;">Opponent Disconnected</h2><p style="color: #a0aec0;">The game has ended.</p></div>';
+            overlay.style.display = 'flex';
+        }
+    }
 }
 
 /**
@@ -1978,6 +2035,11 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
             case "fullReset":
                 // Full connection reset - triggered by either player
                 performFullReset();
+                break;
+                
+            case "exit":
+                // Opponent exited the game
+                handleOpponentDisconnect();
                 break;
         }
     } catch (e) {
