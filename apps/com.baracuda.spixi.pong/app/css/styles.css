@@ -510,13 +510,13 @@ body::before {
 /* Touch Controls */
 .touch-controls {
     display: flex;
-    gap: var(--spacing-lg);
+    gap: var(--spacing-2xl);
     justify-content: center;
 }
 
 .control-btn {
-    width: 70px;
-    height: 70px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     background: var(--surface);
     border: 2px solid var(--border-color);
@@ -534,8 +534,8 @@ body::before {
 }
 
 .control-btn svg {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     transition: transform var(--transition-fast);
 }
 
@@ -711,13 +711,13 @@ body::before {
     }
     
     .control-btn {
-        width: 65px;
-        height: 65px;
+        width: 80px;
+        height: 80px;
     }
     
     .control-btn svg {
-        width: 28px;
-        height: 28px;
+        width: 36px;
+        height: 36px;
     }
 }
 
@@ -824,12 +824,12 @@ body::before {
     }
     
     .touch-controls {
-        gap: var(--spacing-md);
+        gap: var(--spacing-lg);
     }
     
     .control-btn {
-        width: 55px;
-        height: 55px;
+        width: 70px;
+        height: 70px;
     }
 }
 

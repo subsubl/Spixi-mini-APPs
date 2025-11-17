@@ -136,14 +136,31 @@ icon = icon.png                  # Optional - explicit icon reference
 1. Use `apps/com.ixilabs.spixi.mini-apps-test/` to verify SDK integration
 2. Test storage with sequence: write → read → overwrite → delete
 3. Test network by running in two Spixi clients simultaneously
+4. **Local Browser Testing**: Open `app/index.html` directly - limited SDK functions will work for UI testing
 
 ### Packaging
-Use `app-packer/index.html` (browser-based tool):
+
+**CLI Tool (Recommended for automation)**:
+```bash
+# Install dependencies first
+npm install
+
+# Pack single app
+node pack-app.js ./apps/com.ixilabs.spixi.yourapp
+
+# Pack to specific output directory
+node pack-app.js ./apps/com.ixilabs.spixi.yourapp ./packed
+
+# Pack all apps (PowerShell)
+Get-ChildItem ./apps -Directory | ForEach-Object { node pack-app.js $_.FullName ./packed }
+```
+
+**Browser Tool** (`app-packer/index.html`):
 1. Drag app folder containing `appinfo.spixi` and `app/` directory
 2. Generates: `.zip` (content), `.spixi` (metadata), `icon.png`
 3. Upload all three files to your web host
 
-**Note**: Packer works locally only in Firefox due to browser security; use https://apps.spixi.io/packer for other browsers.
+**Note**: Browser packer works locally only in Firefox due to CORS; use https://apps.spixi.io/packer for other browsers.
 
 ## State Synchronization Pattern
 
@@ -266,6 +283,21 @@ See `pong.js` for complete implementation.
 ## Error Handling Pattern
 
 SDK functions use `try/catch` internally. The `executeUiCommand()` wrapper in `spixi-tools.js` catches errors and displays alerts with stack traces during development. Production apps should override callbacks to handle edge cases gracefully.
+
+## CLI Packer Tool
+
+The repository includes `pack-app.js` - a Node.js CLI tool for automated packaging:
+
+**Installation**: `npm install` (requires `jszip` dependency)
+
+**Features**:
+- Validates required files (`appinfo.spixi`, `app/index.html`, optional `icon.png`)
+- Auto-generates SHA-256 checksum and adds to `.spixi` file
+- Auto-fills `contentUrl` and `image` fields based on app name
+- Outputs `.zip`, `.spixi`, and `.png` files
+- Supports batch processing for CI/CD pipelines
+
+**Output Location**: By default saves to app directory, or specify custom output directory as second argument.
 
 ## Testing Your App
 
