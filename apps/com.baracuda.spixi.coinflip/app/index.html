@@ -10,6 +10,7 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
+            <button id="menuBtn" class="menu-btn" title="Menu">☰</button>
             <h1 class="title">🪙 Coin Flip</h1>
             <button id="exitBtn" class="exit-btn" title="Exit">✕</button>
         </header>
@@ -50,17 +51,6 @@
                 </div>
 
                 <button id="placeBetBtn" class="primary-btn" disabled>Place Bet</button>
-
-                <div class="info-box">
-                    <p><strong>Rules:</strong></p>
-                    <ul>
-                        <li>Minimum bet: 1 IXI</li>
-                        <li>Both players must place bets</li>
-                        <li>Lower bet amount is used</li>
-                        <li>Lower bet player flips the coin</li>
-                        <li>Winner receives double the bet amount</li>
-                    </ul>
-                </div>
             </div>
 
             <!-- Waiting Phase -->
@@ -164,6 +154,36 @@
 
         </div>
     </div>
+
+    <!-- Side Menu -->
+    <div id="sideMenu" class="side-menu">
+        <div class="side-menu-content">
+            <div class="side-menu-header">
+                <h2>Menu</h2>
+                <button id="closeMenuBtn" class="close-menu-btn">✕</button>
+            </div>
+            
+            <div class="side-menu-body">
+                <div class="menu-section">
+                    <h3>Rules</h3>
+                    <ul class="rules-list">
+                        <li>Minimum bet: 1 IXI</li>
+                        <li>Both players must place bets</li>
+                        <li>Lower bet amount is used</li>
+                        <li>Lower bet player flips the coin</li>
+                        <li>Winner receives double the bet amount</li>
+                    </ul>
+                </div>
+                
+                <div class="menu-section">
+                    <h3>About</h3>
+                    <p class="version-info">Version 1.0.2</p>
+                    <p class="publisher-info">Published by Baracuda</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="menuOverlay" class="menu-overlay"></div>
 
     <script src="js/spixi-app-sdk.js"></script>
     <script src="js/spixi-tools.js"></script>

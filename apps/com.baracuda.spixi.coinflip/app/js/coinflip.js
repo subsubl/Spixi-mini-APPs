@@ -28,7 +28,11 @@ let keepaliveInterval = null;
 
 // UI Elements
 const elements = {
+    menuBtn: document.getElementById('menuBtn'),
     exitBtn: document.getElementById('exitBtn'),
+    closeMenuBtn: document.getElementById('closeMenuBtn'),
+    sideMenu: document.getElementById('sideMenu'),
+    menuOverlay: document.getElementById('menuOverlay'),
     statusText: document.getElementById('statusText'),
     connectionStatus: document.getElementById('connectionStatus'),
     
@@ -415,6 +419,22 @@ function resetGame() {
 // Exit button
 elements.exitBtn.addEventListener('click', () => {
     SpixiAppSdk.back();
+});
+
+// Menu handlers
+elements.menuBtn.addEventListener('click', () => {
+    elements.sideMenu.classList.add('open');
+    elements.menuOverlay.classList.add('active');
+});
+
+elements.closeMenuBtn.addEventListener('click', () => {
+    elements.sideMenu.classList.remove('open');
+    elements.menuOverlay.classList.remove('active');
+});
+
+elements.menuOverlay.addEventListener('click', () => {
+    elements.sideMenu.classList.remove('open');
+    elements.menuOverlay.classList.remove('active');
 });
 
 // Storage handling (for game persistence)
