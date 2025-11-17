@@ -137,7 +137,7 @@ com.baracuda.spixi.pong/
 - 🔫 Added SHOOT button for host player to start the ball
 - ⏱️ Added 3-second animated countdown before game starts
 - 🤝 Improved hello handshake - pings every 1 second until connection
-- 🚪 Fixed exit function (now uses `spixiAction("close")`)
+- 🚪 Fixed exit function (now uses `SpixiAppSdk.back()`)
 - ✅ Both players must click START to begin countdown
 - 🏓 More realistic pong gameplay flow
 

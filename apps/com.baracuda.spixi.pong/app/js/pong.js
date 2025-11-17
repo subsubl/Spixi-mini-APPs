@@ -1411,8 +1411,13 @@ function exitGame() {
     if (disconnectCheckInterval) clearInterval(disconnectCheckInterval);
     if (autoStartTimer) clearTimeout(autoStartTimer);
     
-    // Close app
-    SpixiAppSdk.spixiAction("close");
+    // Close app using SDK back() helper - this will ask Spixi to go back/exit the app
+    try {
+        SpixiAppSdk.back();
+    } catch (e) {
+        // Fallback to legacy close action if back() is not available
+        try { SpixiAppSdk.spixiAction("close"); } catch (e2) { /* ignore */ }
+    }
 }
 
 function handleOpponentDisconnect() {
