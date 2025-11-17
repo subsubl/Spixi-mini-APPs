@@ -163,13 +163,13 @@ SpixiAppSdk.onInit = function(sessionId, userAddresses) {
     gameState.sessionId = sessionId;
     
     const addresses = userAddresses.split(',');
-    if (addresses.length === 2) {
-        gameState.localAddress = addresses[0].trim();
-        gameState.remoteAddress = addresses[1].trim();
-        
-        console.log('Initialized - Starting connection handshake');
-        startConnectionHandshake();
-    }
+    gameState.remoteAddress = addresses[0].trim();
+    
+    console.log('Initialized - Session ID:', sessionId);
+    console.log('Remote address:', gameState.remoteAddress);
+    
+    // Start connection handshake
+    startConnectionHandshake();
 };
 
 // Connection handshake
@@ -217,6 +217,7 @@ function handleConnectionEstablished() {
 SpixiAppSdk.onNetworkData = function(senderAddress, data) {
     try {
         const message = JSON.parse(data);
+        console.log('Received:', message.action, 'from', senderAddress);
         
         switch(message.action) {
             case 'connect':
@@ -271,6 +272,7 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
 
 function sendNetworkMessage(message) {
     try {
+        console.log('Sending:', message.action, message);
         SpixiAppSdk.sendNetworkData(JSON.stringify(message));
     } catch (e) {
         console.error('Error sending network message:', e);
