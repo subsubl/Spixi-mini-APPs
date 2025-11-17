@@ -98,18 +98,16 @@
                     </button>
                 </div>
                 
-                <!-- Touch Controls -->
-                <div class="touch-controls" id="controls">
-                    <button id="upBtn" class="control-btn" aria-label="Move paddle up">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 15l-6-6-6 6"/>
-                        </svg>
-                    </button>
-                    <button id="downBtn" class="control-btn" aria-label="Move paddle down">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M6 9l6 6 6-6"/>
-                        </svg>
-                    </button>
+                <!-- Scrolling Wheel Control -->
+                <div class="wheel-container" id="wheelContainer">
+                    <div class="wheel-track">
+                        <div class="wheel-handle" id="wheelHandle">
+                            <div class="wheel-grip"></div>
+                            <div class="wheel-grip"></div>
+                            <div class="wheel-grip"></div>
+                        </div>
+                    </div>
+                    <div class="wheel-label">Drag to Control</div>
                 </div>
             </div>
         </div>

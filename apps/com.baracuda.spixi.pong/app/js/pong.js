@@ -314,35 +314,106 @@ function setupControls() {
         }
     });
     
-    // Touch controls
-    const upBtn = document.getElementById('upBtn');
-    const downBtn = document.getElementById('downBtn');
+    // Scrolling wheel control
+    const wheelHandle = document.getElementById('wheelHandle');
+    const wheelTrack = wheelHandle.parentElement;
+    let isDragging = false;
+    let wheelStartY = 0;
+    let wheelCurrentY = 0;
+    let wheelVelocity = 0;
+    let lastWheelY = 0;
+    let wheelUpdateTime = Date.now();
     
-    upBtn.addEventListener('touchstart', (e) => {
+    function handleWheelStart(clientY) {
+        isDragging = true;
+        wheelStartY = clientY;
+        wheelCurrentY = wheelStartY;
+        lastWheelY = wheelStartY;
+        wheelVelocity = 0;
+        wheelUpdateTime = Date.now();
+        wheelHandle.classList.add('dragging');
+    }
+    
+    function handleWheelMove(clientY) {
+        if (!isDragging) return;
+        
+        const now = Date.now();
+        const deltaTime = Math.max(now - wheelUpdateTime, 1);
+        const deltaY = clientY - lastWheelY;
+        
+        // Calculate velocity (pixels per ms, scaled for paddle speed)
+        wheelVelocity = (deltaY / deltaTime) * 16; // Scale to 60fps
+        
+        wheelCurrentY = clientY;
+        lastWheelY = clientY;
+        wheelUpdateTime = now;
+        
+        // Visual feedback - move handle within track bounds
+        const trackRect = wheelTrack.getBoundingClientRect();
+        const handleHeight = wheelHandle.offsetHeight;
+        const maxTravel = trackRect.height - handleHeight;
+        const wheelDelta = wheelCurrentY - wheelStartY;
+        
+        // Clamp handle position
+        let newPosition = 50 + (wheelDelta / trackRect.height) * 100;
+        newPosition = Math.max(handleHeight / trackRect.height * 50, 
+                              Math.min(100 - handleHeight / trackRect.height * 50, newPosition));
+        
+        wheelHandle.style.top = newPosition + '%';
+    }
+    
+    function handleWheelEnd() {
+        isDragging = false;
+        wheelVelocity = 0;
+        wheelHandle.classList.remove('dragging');
+        
+        // Reset handle to center with smooth transition
+        wheelHandle.style.transition = 'top 0.3s ease-out';
+        wheelHandle.style.top = '50%';
+        
+        setTimeout(() => {
+            wheelHandle.style.transition = '';
+        }, 300);
+    }
+    
+    // Touch events
+    wheelHandle.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        touchControlActive = 'up';
+        handleWheelStart(e.touches[0].clientY);
     });
     
-    upBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        touchControlActive = null;
+    document.addEventListener('touchmove', (e) => {
+        if (isDragging) {
+            e.preventDefault();
+            handleWheelMove(e.touches[0].clientY);
+        }
+    }, { passive: false });
+    
+    document.addEventListener('touchend', (e) => {
+        if (isDragging) {
+            e.preventDefault();
+            handleWheelEnd();
+        }
     });
     
-    downBtn.addEventListener('touchstart', (e) => {
+    // Mouse events
+    wheelHandle.addEventListener('mousedown', (e) => {
         e.preventDefault();
-        touchControlActive = 'down';
+        handleWheelStart(e.clientY);
     });
     
-    downBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        touchControlActive = null;
+    document.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            e.preventDefault();
+            handleWheelMove(e.clientY);
+        }
     });
     
-    // Mouse controls for buttons
-    upBtn.addEventListener('mousedown', () => { keysPressed['up'] = true; });
-    upBtn.addEventListener('mouseup', () => { keysPressed['up'] = false; });
-    downBtn.addEventListener('mousedown', () => { keysPressed['down'] = true; });
-    downBtn.addEventListener('mouseup', () => { keysPressed['down'] = false; });
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            handleWheelEnd();
+        }
+    });
     
     // Start button - mark player as ready
     // Start button - removed, game auto-starts on connection
@@ -523,16 +594,25 @@ function gameLoop() {
 }
 
 function updatePaddle() {
-    const moveUp = keysPressed['up'] || touchControlActive === 'up';
-    const moveDown = keysPressed['down'] || touchControlActive === 'down';
+    const moveUp = keysPressed['up'];
+    const moveDown = keysPressed['down'];
     
     // Client-side prediction: Apply input immediately to predicted state
     // This eliminates the lag between user input and visual response
+    
+    // Keyboard controls
     if (moveUp) {
         predictedPaddleY = Math.max(0, predictedPaddleY - PADDLE_SPEED);
     }
     if (moveDown) {
         predictedPaddleY = Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, predictedPaddleY + PADDLE_SPEED);
+    }
+    
+    // Wheel control - velocity-based movement
+    if (wheelVelocity !== 0) {
+        // Negative velocity = drag down = paddle moves down
+        predictedPaddleY += wheelVelocity;
+        predictedPaddleY = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, predictedPaddleY));
     }
     
     // Use predicted paddle position for rendering and collision detection

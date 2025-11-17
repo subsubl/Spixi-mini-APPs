@@ -9,5 +9,5 @@ minUsers =
 maxUsers = 2
 protocols = com.ixilabs.gatecontrol
 contentUrl = gate-control.zip
-checksum = 4d0ba1c5d691005b83917a70b0ee724bcca85ed8a33866c072521f7a2c89478c
+checksum = 1f1060ecd1981c41395f9bf2b67d2c87e510a473e3f4e3c950cc8f66c0adb19c
 contentSize = 377237
