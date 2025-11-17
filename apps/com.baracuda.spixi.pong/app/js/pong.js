@@ -1995,6 +1995,7 @@ SpixiAppSdk.onInit = function(sid, userAddresses) {
     sessionId = sid;
     const addresses = userAddresses.split(",");
     remotePlayerAddress = addresses[0];
+    console.log(`onInit: session=${sessionId}, remotePlayerAddress=${remotePlayerAddress}, userAddresses=${userAddresses}`);
     
     // Local player is always on the right side
     
@@ -2116,16 +2117,29 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
         switch(msg.a) {
             case "connect":
                 // Received connection request from remote player
-                if (msg.rand !== undefined) {
-                    remoteRandomNumber = msg.rand;
-                    console.log('Received connection packet from opponent');
-                }
-                
-                // ALWAYS reply with our connection packet (critical for bidirectional handshake)
-                // This ensures late joiners can connect even if other player already connected
+                console.log(`Connect request from ${senderAddress} (sid=${msg.sid})`);
+                // Always reply to allow late joiners to reply back
                 SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "connect", sid: sessionId, rand: myRandomNumber }));
                 lastDataSent = SpixiTools.getTimestamp();
-                
+
+                // Only consider this connect as our opponent if senderAddress matches expected remote
+                if (senderAddress && remotePlayerAddress) {
+                    const sAddr = senderAddress.toLowerCase();
+                    const rAddr = remotePlayerAddress.toLowerCase();
+                    if (sAddr !== rAddr && !sAddr.includes(rAddr) && !rAddr.includes(sAddr)) {
+                        console.log(`Ignoring connect from ${senderAddress} - expecting ${remotePlayerAddress}`);
+                        break;
+                    }
+                }
+                    console.log(`Ignoring connect from ${senderAddress} - expecting ${remotePlayerAddress}`);
+                    break;
+                }
+
+                if (msg.rand !== undefined) {
+                    remoteRandomNumber = msg.rand;
+                    console.log('Set remoteRandomNumber from opponent');
+                }
+
                 // Establish connection if we have both random numbers and not already connected
                 if (!connectionEstablished && remoteRandomNumber !== null && myRandomNumber !== null) {
                     console.log(`Handshake complete - my:${myRandomNumber}, remote:${remoteRandomNumber}`);
