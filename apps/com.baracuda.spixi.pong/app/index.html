@@ -10,28 +10,45 @@
     <div id="game-container">
         <!-- Waiting Screen -->
         <div id="waiting-screen" class="screen-active">
-            <div class="logo-container">
-                <div class="logo-circle">
-                    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="5" y="30" width="8" height="40" rx="4" fill="currentColor"/>
-                        <rect x="87" y="30" width="8" height="40" rx="4" fill="currentColor"/>
-                        <circle cx="50" cy="50" r="6" fill="currentColor"/>
-                    </svg>
+            <div class="waiting-hero">
+                <div class="court-animation">
+                    <div class="court-line court-line-top"></div>
+                    <div class="court-line court-line-middle"></div>
+                    <div class="court-line court-line-bottom"></div>
+                    <div class="paddle paddle-left"></div>
+                    <div class="paddle paddle-right"></div>
+                    <div class="ball"></div>
                 </div>
-                <h1 class="game-title">Pong</h1>
+                
+                <div class="title-wrapper">
+                    <h1 class="game-title">
+                        <span class="title-letter">P</span>
+                        <span class="title-letter">o</span>
+                        <span class="title-letter">n</span>
+                        <span class="title-letter">g</span>
+                    </h1>
+                    <p class="game-subtitle">Classic Multiplayer</p>
+                </div>
             </div>
-            <div class="waiting-content">
-                <div class="spinner-container">
-                    <div class="spinner">
-                        <div class="spinner-ring"></div>
-                        <div class="spinner-ring"></div>
-                        <div class="spinner-ring"></div>
+
+            <div class="connection-panel">
+                <div class="connection-indicator">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="connection-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
                     </div>
                 </div>
-                <p class="waiting-text">Connecting to opponent...</p>
-                <div class="connection-status">
-                    <span class="status-dot"></span>
-                    <span class="status-label">Establishing connection</span>
+                <h2 class="connection-title">Waiting for Opponent</h2>
+                <p class="connection-message">Establishing secure peer connection...</p>
+                <div class="connection-dots">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
                 </div>
             </div>
         </div>
