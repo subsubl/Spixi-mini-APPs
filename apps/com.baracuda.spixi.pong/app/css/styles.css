@@ -283,6 +283,7 @@ body::before {
     background: linear-gradient(180deg, var(--bg-primary) 0%, transparent 100%);
     border-bottom: 1px solid var(--border-color);
     gap: var(--spacing-md);
+    position: relative;
 }
 
 .score-container {
@@ -319,6 +320,40 @@ body::before {
 .lives-indicator {
     display: flex;
     gap: 6px;
+}
+
+/* Exit Button in Header */
+.exit-btn {
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-base);
+    z-index: 10;
+}
+
+.exit-btn:hover {
+    background: var(--danger);
+    color: white;
+    transform: scale(1.05);
+}
+
+.exit-btn:active {
+    transform: scale(0.95);
+}
+
+.exit-btn svg {
+    width: 18px;
+    height: 18px;
 }
 
 .life-dot {
