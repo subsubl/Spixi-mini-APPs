@@ -372,6 +372,19 @@ function startClockSync() {
     clockSyncSamples = [];
     console.log('Starting clock synchronization...');
     
+    // Only ball owner initiates clock sync to avoid deadlock
+    if (!gameState.isBallOwner) {
+        console.log('Non-owner waiting for clock sync requests...');
+        // Non-owner just waits and responds, then times out
+        setTimeout(() => {
+            if (clockSyncActive) {
+                console.log('Clock sync timeout - proceeding with default offset');
+                finishClockSync();
+            }
+        }, 2000);
+        return;
+    }
+    
     // Send first sync request immediately
     sendClockSyncRequest();
     
@@ -384,6 +397,14 @@ function startClockSync() {
             finishClockSync();
         }
     }, CLOCK_SYNC_INTERVAL);
+    
+    // Timeout after 2 seconds even if we don't get enough samples
+    setTimeout(() => {
+        if (clockSyncActive) {
+            console.log('Clock sync timeout - using available samples');
+            finishClockSync();
+        }
+    }, 2000);
 }
 
 function sendClockSyncRequest() {
@@ -420,6 +441,7 @@ function handleClockSyncResponse(t1, t2) {
 }
 
 function finishClockSync() {
+    if (!clockSyncActive) return; // Already finished
     clockSyncActive = false;
     
     // Clear interval
@@ -431,14 +453,17 @@ function finishClockSync() {
     // Filter out samples with high RTT (>150ms) as they're unreliable
     const goodSamples = clockSyncSamples.filter(s => s.rtt < 150);
     
-    if (goodSamples.length === 0) {
-        console.warn('No good clock sync samples - using default offset 0');
+    if (clockSyncSamples.length === 0) {
+        console.log('No clock sync samples collected - using default offset 0');
+        clockOffset = 0;
+    } else if (goodSamples.length === 0) {
+        console.warn('No good clock sync samples (all high RTT) - using default offset 0');
         clockOffset = 0;
     } else {
         // Use median offset from good samples for robustness
         const offsets = goodSamples.map(s => s.offset).sort((a, b) => a - b);
         clockOffset = offsets[Math.floor(offsets.length / 2)];
-        console.log(`Clock synchronized: offset=${clockOffset.toFixed(1)}ms (${goodSamples.length} samples)`);
+        console.log(`Clock synchronized: offset=${clockOffset.toFixed(1)}ms (${goodSamples.length}/${clockSyncSamples.length} samples)`);
     }
     
     // Update status label
