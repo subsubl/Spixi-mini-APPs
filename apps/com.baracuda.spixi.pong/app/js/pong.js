@@ -391,8 +391,16 @@ function startGame() {
 }
 
 function resetBallPosition() {
-    gameState.ball.x = CANVAS_WIDTH / 2;
-    gameState.ball.y = CANVAS_HEIGHT / 2;
+    // Position ball at the serving paddle (ball owner is always on right)
+    if (gameState.isBallOwner) {
+        // Right paddle - ball owner
+        gameState.ball.x = CANVAS_WIDTH - 20 - PADDLE_WIDTH - BALL_SIZE;
+        gameState.ball.y = gameState.localPaddle.y + PADDLE_HEIGHT / 2;
+    } else {
+        // Left paddle - non-owner
+        gameState.ball.x = 20 + PADDLE_WIDTH + BALL_SIZE;
+        gameState.ball.y = gameState.localPaddle.y + PADDLE_HEIGHT / 2;
+    }
     gameState.ball.vx = 0;
     gameState.ball.vy = 0;
 }
@@ -402,10 +410,9 @@ function launchBall() {
         document.getElementById('shootBtn').style.display = 'none';
         document.getElementById('status-text').textContent = 'Game On!';
         
-        // Initialize ball velocity
+        // Initialize ball velocity - always shoot toward opponent (left)
         const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
-        const direction = Math.random() < 0.5 ? 1 : -1;
-        gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL * direction;
+        gameState.ball.vx = -Math.cos(angle) * BALL_SPEED_INITIAL; // Always negative (toward left)
         gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
         
         // Notify other player with ball velocity included
@@ -700,22 +707,33 @@ function checkScore() {
 }
 
 function resetBall() {
-    // Reset to center
+    // Position ball at serving paddle
     resetBallPosition();
     
-    // Launch ball with random velocity
+    // Auto-launch ball from paddle with random angle toward opponent
     const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
-    const direction = Math.random() < 0.5 ? 1 : -1;
-    gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL * direction;
+    
+    if (gameState.isBallOwner) {
+        // Ball owner on right - shoot left (toward opponent)
+        gameState.ball.vx = -Math.cos(angle) * BALL_SPEED_INITIAL;
+    } else {
+        // Non-owner on left - shoot right (toward opponent)
+        gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL;
+    }
     gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
     
-    // Sync target
-    ballTarget.vx = gameState.ball.vx;
-    ballTarget.vy = gameState.ball.vy;
-    
-    // Send immediately
-    lastSyncTime = 0;
-    sendGameState();
+    // Send ball state immediately
+    const b = gameState.ball;
+    SpixiAppSdk.sendNetworkData(JSON.stringify({ 
+        a: "launch",
+        b: {
+            x: Math.round(CANVAS_WIDTH - b.x),
+            y: Math.round(b.y),
+            vx: Number((-b.vx).toFixed(2)),
+            vy: Number(b.vy.toFixed(2))
+        }
+    }));
+    lastDataSent = SpixiTools.getTimestamp();
 }
 
 function updateLivesDisplay() {
