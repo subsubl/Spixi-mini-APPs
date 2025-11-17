@@ -175,69 +175,54 @@ function playPaddleHitSound() {
 }
 
 function playWallBounceSound() {
-    if (!soundEnabled || !audioContext) return;
-    
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.value = 220; // A3 note
-    oscillator.type = 'square';
-    
-    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.08);
-}
+    connectionEstablished = true;
 
-function playScoreSound(isPositive) {
-    if (!soundEnabled || !audioContext) return;
-    
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    if (isPositive) {
-        // Victory sound - ascending notes
-        oscillator.frequency.setValueAtTime(523, audioContext.currentTime); // C5
-        oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.1); // E5
-        oscillator.frequency.setValueAtTime(784, audioContext.currentTime + 0.2); // G5
-    } else {
-        // Loss sound - descending notes
-        oscillator.frequency.setValueAtTime(392, audioContext.currentTime); // G4
-        oscillator.frequency.setValueAtTime(330, audioContext.currentTime + 0.1); // E4
-        oscillator.frequency.setValueAtTime(262, audioContext.currentTime + 0.2); // C4
+    // Stop connection retry attempts
+    if (connectionRetryInterval) {
+        clearInterval(connectionRetryInterval);
+        connectionRetryInterval = null;
     }
-    
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
-}
 
-function playGameOverSound(isWinner) {
-    if (!soundEnabled || !audioContext) return;
-    
-    const notes = isWinner 
-        ? [523, 659, 784, 1047] // C5, E5, G5, C6 - victory fanfare
-        : [392, 330, 262, 196];  // G4, E4, C4, G3 - defeat
-    
-    notes.forEach((freq, index) => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = freq;
+    // Update connection status
+    const statusLabel = document.querySelector('.status-label');
+    if (statusLabel) {
+        statusLabel.textContent = 'Connected';
+    }
+
+    // Start regular ping
+    if (!pingInterval) {
+        pingInterval = setInterval(() => {
+            const currentTime = SpixiTools.getTimestamp();
+            if (currentTime - lastDataSent >= 2) {
+                lastDataSent = currentTime;
+                SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "ping" }));
+            }
+        }, 2000);
+    }
+
+    // Start disconnect detection (check every 10 seconds)
+    if (!disconnectCheckInterval) {
+        disconnectCheckInterval = setInterval(() => {
+            const currentTime = SpixiTools.getTimestamp();
+            const timeSinceLastSeen = currentTime - playerLastSeen;
+
+            // If no data received for 10 seconds, consider disconnected
+            if (timeSinceLastSeen >= 10) {
+                if (disconnectCheckInterval) {
+                    clearInterval(disconnectCheckInterval);
+                    disconnectCheckInterval = null;
+                }
+                handleOpponentDisconnect();
+            }
+        }, 10000);
+    }
+
+    // Transition to game screen
+    document.getElementById('waiting-screen').classList.replace('screen-active', 'screen-hidden');
+    document.getElementById('game-screen').classList.replace('screen-hidden', 'screen-active');
+
+    // Auto-start after brief delay
+    autoStartTimer = setTimeout(() => startGame(), 500);
         oscillator.type = isWinner ? 'sine' : 'triangle';
         
         const startTime = audioContext.currentTime + (index * 0.15);
@@ -930,34 +915,25 @@ function launchBall() {
         // Notify other player with ball velocity included
         const b = gameState.ball;
         SpixiAppSdk.sendNetworkData(JSON.stringify({ 
-            a: "launch",
-            b: {
-                x: Math.round(CANVAS_WIDTH - b.x), // Mirror X
-                y: Math.round(b.y),
-                vx: Math.round(-b.vx * 100),   // Integer velocity (*100)
-                vy: Math.round(b.vy * 100)
-            }
-        }));
-        lastDataSent = SpixiTools.getTimestamp();
-        lastSyncTime = 0;
-        sendGameState();
-    }
-}
+            case "connect":
+                // Received connection request from remote player
+                // Always reply (fire-and-forget) to make handshake robust
+                appendConnectionLog(`Received connect request from ${senderAddress || 'unknown'}`, 'info');
+                SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "connect", sid: sessionId, rand: myRandomNumber }));
+                lastDataSent = SpixiTools.getTimestamp();
 
-function gameLoop() {
-    if (!gameState.gameStarted || gameState.gameEnded) {
-        return;
-    }
-    
-    frameCounter++;
-    updatePaddle();
-    
-    // Update remote paddle with entity interpolation
-    updateRemotePaddleInterpolation();
-    
-    // Only player with ball authority simulates ball movement locally
-    const ballHasVelocity = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
-    
+                // Save the remote random number; original logic did not gate by sender address
+                if (msg.rand !== undefined) {
+                    remoteRandomNumber = msg.rand;
+                    appendConnectionLog('Set remoteRandomNumber from opponent', 'info');
+                }
+
+                // Establish connection if we have both random numbers and not already connected
+                if (!connectionEstablished && remoteRandomNumber !== null) {
+                    appendConnectionLog(`Handshake complete - my:${myRandomNumber}, remote:${remoteRandomNumber}`, 'info');
+                    handleConnectionEstablished();
+                }
+                break;
     if (ballHasVelocity) {
         // Simulate ball if we have authority, otherwise interpolate toward target
         if (gameState.hasActiveBallAuthority) {
