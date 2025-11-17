@@ -291,18 +291,18 @@ body::before {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-md) var(--spacing-sm);
+    padding: var(--spacing-lg) var(--spacing-md);
     background: linear-gradient(180deg, var(--bg-primary) 0%, transparent 100%);
     border-bottom: 1px solid var(--border-color);
-    gap: var(--spacing-xs);
+    gap: var(--spacing-md);
     position: relative;
     flex-wrap: wrap;
 }
 
 @media (min-width: 768px) {
     .game-header {
-        padding: var(--spacing-lg) var(--spacing-xl);
-        gap: var(--spacing-md);
+        padding: var(--spacing-xl) var(--spacing-2xl);
+        gap: var(--spacing-lg);
         flex-wrap: nowrap;
     }
 }
@@ -343,59 +343,81 @@ body::before {
     gap: 6px;
 }
 
-/* Exit Button in Header */
-.exit-btn {
+/* Header Buttons Container */
+.header-buttons {
     position: absolute;
     top: var(--spacing-sm);
     right: var(--spacing-sm);
+    display: flex;
+    gap: var(--spacing-xs);
+    z-index: 10;
+}
+
+@media (min-width: 768px) {
+    .header-buttons {
+        top: var(--spacing-md);
+        right: var(--spacing-md);
+        gap: var(--spacing-sm);
+    }
+}
+
+.header-btn {
     width: 44px;
     height: 44px;
     min-width: 44px;
     min-height: 44px;
     border: none;
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--danger);
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--text-secondary);
     border-radius: var(--border-radius-sm);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all var(--transition-base);
-    z-index: 10;
     -webkit-tap-highlight-color: transparent;
 }
 
 @media (min-width: 768px) {
-    .exit-btn {
+    .header-btn {
         width: 36px;
         height: 36px;
         min-width: 36px;
         min-height: 36px;
-        top: var(--spacing-md);
-        right: var(--spacing-md);
     }
 }
 
-.exit-btn:hover {
-    background: var(--danger);
-    color: white;
+.header-btn:hover {
+    background: var(--surface-light);
+    color: var(--text-primary);
     transform: scale(1.05);
 }
 
-.exit-btn:active {
+.header-btn:active {
     transform: scale(0.95);
 }
 
-.exit-btn svg {
+.header-btn svg {
     width: 20px;
     height: 20px;
 }
 
 @media (min-width: 768px) {
-    .exit-btn svg {
+    .header-btn svg {
         width: 18px;
         height: 18px;
     }
+}
+
+/* Exit button specific styling */
+#exitBtn {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+#exitBtn:hover {
+    background: var(--danger);
+    color: white;
 }
 
 .life-dot {
@@ -460,7 +482,7 @@ body::before {
 .canvas-wrapper {
     position: relative;
     width: 100%;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-md);
     display: flex;
     justify-content: center;
     align-items: center;
