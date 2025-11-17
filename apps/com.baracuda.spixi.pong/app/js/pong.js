@@ -121,7 +121,7 @@ const PADDLE_WIDTH = 15;
 const PADDLE_HEIGHT = 100;
 const BALL_SIZE = 12;
 const PADDLE_SPEED = 8;
-const BALL_SPEED_INITIAL = 7;
+const BALL_SPEED_INITIAL = 6.58;
 const BALL_SPEED_INCREMENT = 0.4;
 const MAX_LIVES = 3;
 const FRAME_RATE = 60; // Render at 60fps
@@ -1106,30 +1106,33 @@ function resetBall() {
     const servingPlayer = gameState.isBallOwner;
     gameState.hasActiveBallAuthority = servingPlayer;
     
-    // Auto-launch ball from paddle with random angle toward opponent
-    const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
-    
-    if (gameState.isBallOwner) {
-        // Ball owner on right - shoot left (toward opponent)
-        gameState.ball.vx = -Math.cos(angle) * BALL_SPEED_INITIAL;
-    } else {
-        // Non-owner on left - shoot right (toward opponent)
-        gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL;
-    }
-    gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
-    
-    // Send ball state immediately
-    const b = gameState.ball;
-    SpixiAppSdk.sendNetworkData(JSON.stringify({ 
-        a: "launch",
-        b: {
-            x: Math.round(CANVAS_WIDTH - b.x),
-            y: Math.round(b.y),
-            vx: Number((-b.vx).toFixed(2)),
-            vy: Number(b.vy.toFixed(2))
+    // Delay 1 second before auto-launching ball
+    setTimeout(() => {
+        // Auto-launch ball from paddle with random angle toward opponent
+        const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
+        
+        if (gameState.isBallOwner) {
+            // Ball owner on right - shoot left (toward opponent)
+            gameState.ball.vx = -Math.cos(angle) * BALL_SPEED_INITIAL;
+        } else {
+            // Non-owner on left - shoot right (toward opponent)
+            gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL;
         }
-    }));
-    lastDataSent = SpixiTools.getTimestamp();
+        gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
+        
+        // Send ball state immediately
+        const b = gameState.ball;
+        SpixiAppSdk.sendNetworkData(JSON.stringify({ 
+            a: "launch",
+            b: {
+                x: Math.round(CANVAS_WIDTH - b.x),
+                y: Math.round(b.y),
+                vx: Number((-b.vx).toFixed(2)),
+                vy: Number(b.vy.toFixed(2))
+            }
+        }));
+        lastDataSent = SpixiTools.getTimestamp();
+    }, 1000);
 }
 
 function updateLivesDisplay() {
