@@ -1134,9 +1134,33 @@ function sendGameState() {
         lastSentLastAck = lastAcknowledgedSequence;
     }
     
-    // Ball state is no longer sent continuously here; it is sent
-    // only on launch and collision events to reduce jitter and
-    // match classic Pong behaviour (no mid-flight acceleration).
+    // Include ball state if we have authority and ball is moving
+    // This keeps non-authoritative client updated with smooth interpolation
+    const ballActive = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
+    if (gameState.hasActiveBallAuthority && ballActive) {
+        const b = gameState.ball;
+        const newBallState = {
+            x: Math.round(CANVAS_WIDTH - b.x), // Mirror X for opponent's view
+            y: Math.round(b.y),
+            vx: Number((-b.vx).toFixed(2)),
+            vy: Number(b.vy.toFixed(2))
+        };
+        
+        // Only include if changed significantly (position differs by >2px or velocity changed)
+        const ballStateChanged = !lastSentBallState ||
+            Math.abs(lastSentBallState.x - newBallState.x) > 2 ||
+            Math.abs(lastSentBallState.y - newBallState.y) > 2 ||
+            lastSentBallState.vx !== newBallState.vx ||
+            lastSentBallState.vy !== newBallState.vy;
+        
+        if (ballStateChanged) {
+            state.b = newBallState;
+            lastSentBallState = newBallState;
+        }
+    } else if (!ballActive) {
+        // Ball stopped - clear cached state
+        lastSentBallState = null;
+    }
     
     // Always send state packet (at minimum contains action type)
     SpixiAppSdk.sendNetworkData(JSON.stringify(state));
@@ -1485,16 +1509,26 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                     remotePaddleTarget = msg.p;
                 }
                 
-                // Readjust ball when receiving data (both players can send now)
+                // Update ball state when receiving data
                 if (msg.b) {
                     // Convert from sender's coordinate system to ours (mirror X)
                     const mirroredX = CANVAS_WIDTH - msg.b.x;
                     const mirroredVx = -msg.b.vx;
-                    // Snap immediately on launch / bounce events
-                    gameState.ball.x = mirroredX;
-                    gameState.ball.y = msg.b.y;
-                    gameState.ball.vx = mirroredVx;
-                    gameState.ball.vy = msg.b.vy;
+                    
+                    // Set as interpolation target for smooth motion
+                    ballTarget.x = mirroredX;
+                    ballTarget.y = msg.b.y;
+                    ballTarget.vx = mirroredVx;
+                    ballTarget.vy = msg.b.vy;
+                    
+                    // If we don't have authority, snap to remote state
+                    // (they are simulating, we follow)
+                    if (!gameState.hasActiveBallAuthority) {
+                        gameState.ball.x = mirroredX;
+                        gameState.ball.y = msg.b.y;
+                        gameState.ball.vx = mirroredVx;
+                        gameState.ball.vy = msg.b.vy;
+                    }
                 }
                 break;
                 
