@@ -216,17 +216,39 @@ let gameStartTime = 0;
 // Network ping interval
 let pingInterval = null;
 let gameLoopInterval = null;
+let connectionRetryInterval = null;
 
-// Simplified connection handshake
+// Simplified connection handshake with retry mechanism
 function establishConnection() {
     // Send connection request with session ID and random number for ball owner determination
     const msg = { a: "connect", sid: sessionId, rand: myRandomNumber };
     SpixiAppSdk.sendNetworkData(JSON.stringify(msg));
     lastDataSent = SpixiTools.getTimestamp();
+    
+    // Keep sending connection packets every 500ms until we get a response
+    if (!connectionRetryInterval) {
+        connectionRetryInterval = setInterval(() => {
+            if (!connectionEstablished) {
+                const msg = { a: "connect", sid: sessionId, rand: myRandomNumber };
+                SpixiAppSdk.sendNetworkData(JSON.stringify(msg));
+                lastDataSent = SpixiTools.getTimestamp();
+            } else {
+                // Connection established - stop retry attempts
+                clearInterval(connectionRetryInterval);
+                connectionRetryInterval = null;
+            }
+        }, 500);
+    }
 }
 
 function handleConnectionEstablished() {
     connectionEstablished = true;
+    
+    // Stop connection retry attempts
+    if (connectionRetryInterval) {
+        clearInterval(connectionRetryInterval);
+        connectionRetryInterval = null;
+    }
     
     // Update connection status
     const statusLabel = document.querySelector('.status-label');
@@ -1025,6 +1047,7 @@ function exitGame() {
     // Cleanup intervals
     if (gameLoopInterval) clearInterval(gameLoopInterval);
     if (pingInterval) clearInterval(pingInterval);
+    if (connectionRetryInterval) clearInterval(connectionRetryInterval);
     if (autoStartTimer) clearTimeout(autoStartTimer);
     
     // Close app
