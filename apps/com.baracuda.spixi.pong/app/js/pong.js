@@ -1277,25 +1277,101 @@ function endGame(won) {
 }
 
 function restartGame() {
-    // Reset game state
+    // Notify remote player first
+    SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "fullReset" }));
+    lastDataSent = SpixiTools.getTimestamp();
+    
+    // Execute full reset
+    performFullReset();
+}
+
+function performFullReset() {
+    // Stop all intervals and timers
+    if (gameLoopInterval) {
+        clearInterval(gameLoopInterval);
+        gameLoopInterval = null;
+    }
+    if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+    }
+    if (connectionRetryInterval) {
+        clearInterval(connectionRetryInterval);
+        connectionRetryInterval = null;
+    }
+    if (autoStartTimer) {
+        clearTimeout(autoStartTimer);
+        autoStartTimer = null;
+    }
+    
+    // Reset all connection state
+    connectionEstablished = false;
+    myRandomNumber = Math.floor(Math.random() * 1000000);
+    remoteRandomNumber = null;
+    
+    // Reset game state completely
     gameState.localPaddle.y = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
     gameState.localPaddle.lives = MAX_LIVES;
     gameState.remotePaddle.y = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
     gameState.remotePaddle.lives = MAX_LIVES;
     gameState.gameStarted = false;
     gameState.gameEnded = false;
+    gameState.isBallOwner = false;
+    gameState.hasActiveBallAuthority = false;
     
-    resetBallPosition();
+    // Reset ball
+    gameState.ball.x = CANVAS_WIDTH / 2;
+    gameState.ball.y = CANVAS_HEIGHT / 2;
+    gameState.ball.vx = 0;
+    gameState.ball.vy = 0;
+    
+    // Reset prediction state
+    predictedPaddleY = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
+    lastAuthorativePaddleY = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
+    lastAcknowledgedSequence = 0;
+    inputSequence = 0;
+    pendingInputs = [];
+    
+    // Reset frame counters
+    frameCounter = 0;
+    remoteFrameCounter = 0;
+    frameCounterMismatchCount = 0;
+    
+    // Reset networking state
+    lastDataSent = 0;
+    lastSyncTime = 0;
+    lastSentFrameCounter = 0;
+    lastSentSeq = 0;
+    lastSentLastAck = 0;
+    lastSentPaddleY = gameState.localPaddle.y;
+    
+    // Reset wheel position to center
+    if (wheelHandle) {
+        wheelHandle.style.top = '50%';
+    }
+    
     updateLivesDisplay();
     
-    // Transition screens
-    document.getElementById('game-over-screen').classList.replace('screen-active', 'screen-hidden');
-    document.getElementById('game-screen').classList.replace('screen-hidden', 'screen-active');
+    // Transition to waiting screen
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const waitingScreen = document.getElementById('waiting-screen');
     
-    // Notify remote player and auto-start
-    SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "restart" }));
-    lastDataSent = SpixiTools.getTimestamp();
-    setTimeout(() => startGame(), 500);
+    if (gameOverScreen.classList.contains('screen-active')) {
+        gameOverScreen.classList.replace('screen-active', 'screen-hidden');
+    }
+    if (gameScreen.classList.contains('screen-active')) {
+        gameScreen.classList.replace('screen-active', 'screen-hidden');
+    }
+    waitingScreen.classList.replace('screen-hidden', 'screen-active');
+    
+    const waitingText = document.querySelector('.waiting-text');
+    if (waitingText) {
+        waitingText.textContent = 'Reconnecting to opponent...';
+    }
+    
+    // Re-establish connection
+    setTimeout(() => establishConnection(), 100);
 }
 
 function exitGame() {
@@ -1893,10 +1969,15 @@ SpixiAppSdk.onNetworkData = function(senderAddress, data) {
                 break;
                 
             case "restart":
-                // Restart request
+                // Legacy restart (soft reset)
                 if (gameState.gameEnded) {
-                    restartGame();
+                    performFullReset();
                 }
+                break;
+                
+            case "fullReset":
+                // Full connection reset - triggered by either player
+                performFullReset();
                 break;
         }
     } catch (e) {
