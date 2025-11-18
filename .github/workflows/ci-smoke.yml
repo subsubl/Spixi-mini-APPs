@@ -1,0 +1,56 @@
+name: CI - Smoke Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start server in background
+        run: npm start &
+
+      - name: Wait for web server
+        run: npx wait-on http://localhost:8000
+
+      - name: Smoke test HTTP endpoint
+        run: |
+          echo "Checking the main hub HTML"
+          curl -fsS http://localhost:8000 | head -n 1 | grep -q "Spixi Mini Apps - Test Environment"
+          echo "Checking MQTT status endpoint"
+          curl -fsS http://localhost:8000/api/mqtt/status | grep -q 'isConnected' || true
+
+      - name: Pack sample app (Pong)
+        run: node pack-app.js ./apps/com.baracuda.spixi.pong ./tests-outputs
+
+      - name: Validate pack outputs
+        run: |
+          echo "Listing tests-outputs contents"
+          ls -la ./tests-outputs
+          test -f ./tests-outputs/pong.zip
+          test -f ./tests-outputs/pong.spixi
+
+      - name: Run Node smoke test
+        run: |
+          echo "Running Node smoke-test script"
+          npm run smoke-test -- ./apps/com.baracuda.spixi.pong ./tests-outputs
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Show new files
+        run: |
+          echo "Pack output created:" 
+          ls -la ./tests-outputs || true

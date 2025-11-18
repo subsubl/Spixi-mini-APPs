@@ -2425,6 +2425,10 @@
                             <span>🌐</span>
                             <span>View App</span>
                         </button>
+                        <button class="btn btn-accent" onclick="packApp('${app.id}', '${app.name}')">
+                            <span>📦</span>
+                            <span>Pack</span>
+                        </button>
                         <button class="btn btn-secondary" onclick="downloadApp('${app.name}', '${app.zip}')">
                             <span>💾</span>
                             <span>Extract</span>
@@ -2642,6 +2646,39 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+
+        async function packApp(appId, name) {
+            try {
+                const uploadStatus = document.getElementById('uploadStatus');
+                uploadStatus.textContent = `📦 Packing ${name}...`;
+                uploadStatus.style.display = 'block';
+
+                const response = await fetch('/api/pack', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ appId })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    uploadStatus.textContent = `❌ Pack failed: ${result.error || 'Unknown error'}`;
+                    uploadStatus.className = 'upload-status error';
+                    return;
+                }
+
+                uploadStatus.textContent = `✅ Packed: ${result.baseName}`;
+                uploadStatus.className = 'upload-status success';
+
+                if (result.zip) {
+                    // Trigger download
+                    downloadApp(name, '/' + result.zip.replace(/\\\\/g, '/'));
+                }
+            } catch (err) {
+                const uploadStatus = document.getElementById('uploadStatus');
+                uploadStatus.textContent = `❌ Pack failed: ${err.message}`;
+                uploadStatus.className = 'upload-status error';
+            }
         }
 
         // Render apps on page load

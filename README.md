@@ -26,12 +26,17 @@ npm start
 - Open the main UI: `http://localhost:8000`
 - Dev server (to load a specific app): `http://localhost:8081/?app=<appId>` (example: `?app=com.baracuda.spixi.pong`)
 
+## Technical Guide & API
+- See `TECHNICAL_GUIDE.md` for a compact technical guide and pointers to server APIs, the packer, and CI smoke tests.
+
 ## Common Commands
 
 - Pack an app (creates packed output):
 
 ```powershell
 node pack-app.js ./apps/com.baracuda.spixi.pong ./packed
+
+Or pack from the hub UI: Open `http://localhost:8000`, find an app card, then click the `📦 Pack` button — this calls the `POST /api/pack` endpoint and triggers a download of the resulting ZIP from the browser.
 ```
 
 - Run the server in foreground (shows logs):

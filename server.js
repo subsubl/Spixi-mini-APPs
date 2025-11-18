@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const mqtt = require('mqtt');
+const { spawn } = require('child_process');
 
 const MAIN_PORT = 8000;
 const DEV_PORT = 8081;
@@ -153,6 +154,12 @@ const mainServer = http.createServer((req, res) => {
     // Handle MQTT API calls
     if (req.url.startsWith('/api/mqtt')) {
         handleMqttApi(req, res);
+        return;
+    }
+
+    // Handle pack API (POST)
+    if (req.url.startsWith('/api/pack')) {
+        handlePackApi(req, res);
         return;
     }
 
@@ -334,6 +341,85 @@ function handleMqttApi(req, res) {
     // 404 for unknown API endpoints
     res.writeHead(404);
     res.end(JSON.stringify({ error: 'Not found' }));
+}
+
+
+// ============================================
+// PACK API - Runs pack-app.js to create ZIP/.spixi for an app
+// ============================================
+function handlePackApi(req, res) {
+    res.setHeader('Content-Type', 'application/json');
+
+    if (req.method !== 'POST') {
+        res.writeHead(405);
+        res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
+        return;
+    }
+
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+        try {
+            const data = JSON.parse(body || '{}');
+            const appId = data.appId;
+            if (!appId) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, error: 'Missing appId' }));
+                return;
+            }
+
+            const appsDir = path.join(__dirname, 'apps');
+            const appPath = path.join(appsDir, appId);
+
+            // Validate app exists
+            if (!fs.existsSync(appPath)) {
+                res.writeHead(404);
+                res.end(JSON.stringify({ success: false, error: 'App not found' }));
+                return;
+            }
+
+            const outputDir = path.resolve(data.outputDir || path.join(__dirname, 'packed'));
+            if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+            // Run pack-app.js CLI
+            const cli = spawn('node', [path.join(__dirname, 'pack-app.js'), appPath, outputDir]);
+
+            let stdout = '';
+            let stderr = '';
+            cli.stdout.on('data', (d) => { stdout += d.toString(); });
+            cli.stderr.on('data', (d) => { stderr += d.toString(); });
+
+            cli.on('close', (code) => {
+                if (code !== 0) {
+                    res.writeHead(500);
+                    res.end(JSON.stringify({ success: false, error: stderr || 'Pack failed', code }));
+                    return;
+                }
+
+                // compute base name from appinfo.spixi
+                const appInfoPath = path.join(appPath, 'appinfo.spixi');
+                let baseName = 'app';
+                if (fs.existsSync(appInfoPath)) {
+                    const appInfoText = fs.readFileSync(appInfoPath, 'utf8');
+                    const match = appInfoText.match(/^name\s*=\s*(.+)$/m);
+                    baseName = match && match[1] ? match[1].trim().replace(/\s+/g, '-').toLowerCase() : baseName;
+                }
+
+                const zipPath = path.join(outputDir, `${baseName}.zip`);
+                const spixiPath = path.join(outputDir, `${baseName}.spixi`);
+
+                const result = { success: true, baseName, zip: null, spixi: null };
+                if (fs.existsSync(zipPath)) result.zip = path.relative(__dirname, zipPath);
+                if (fs.existsSync(spixiPath)) result.spixi = path.relative(__dirname, spixiPath);
+
+                res.writeHead(200);
+                res.end(JSON.stringify(result));
+            });
+        } catch (err) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+    });
 }
 
 
