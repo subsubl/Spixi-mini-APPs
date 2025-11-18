@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Apps Test Environment</title>
+    <title>Spixi Mini Apps - Test Environment</title>
     <style>
         * {
             margin: 0;
@@ -12,11 +12,274 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0d1220 100%);
             min-height: 100vh;
+            color: #e0e7ff;
+            overflow-x: hidden;
+        }
+
+        /* ========== Hero Section ========== */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0a0e27 0%, #16213e 50%, #0d1220 100%);
+            position: relative;
+            overflow: hidden;
             padding: 2rem;
-            color: #f1f5f9;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: #cbd5e1;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 200ms ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .hero-btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .hero-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .hero-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e0e7ff;
+        }
+
+        .hero-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* ========== Section Layout ========== */
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-size: clamp(1.875rem, 5vw, 2.5rem);
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(135deg, #60a5fa 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-subtitle {
+            font-size: 1.125rem;
+            color: #cbd5e1;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 0.875rem 1.75rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 200ms ease;
+            margin-top: 1rem;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:disabled {
+            background: rgba(71, 85, 105, 0.5);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            opacity: 0.6;
+        }
+
+        .upload-status {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            border-left: 4px solid transparent;
+        }
+
+        .upload-status.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: #10b981;
+            color: #86efac;
+        }
+
+        .upload-status.error {
+            background: rgba(239, 68, 68, 0.1);
+            border-left-color: #ef4444;
+            color: #fca5a5;
+        }
+
+        .upload-status.info {
+            background: rgba(59, 130, 246, 0.1);
+            border-left-color: #3b82f6;
+            color: #93c5fd;
+        }
+
+        .file-input {
+            margin-bottom: 1.5rem;
+        }
+
+        .file-input input[type="file"] {
+            display: none;
+        }
+
+        .file-input label {
+            display: inline-block;
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 200ms ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+        }
+
+        .file-input label:hover {
+            box-shadow: 0 6px 25px rgba(59, 130, 246, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .file-list {
+            margin-top: 1.5rem;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: rgba(51, 65, 85, 0.4);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+            transition: all 200ms ease;
+        }
+
+        .file-item:hover {
+            background: rgba(51, 65, 85, 0.6);
+            border-color: rgba(148, 163, 184, 0.2);
+        }
+
+        .file-item .file-name {
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .file-item .file-size {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .file-item .remove-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 0;
+            transition: color 200ms ease;
+        }
+
+        .file-item .remove-btn:hover {
+            color: #fca5a5;
         }
 
         .container {
@@ -34,9 +297,9 @@
         }
 
         .info {
-            background: rgba(30, 41, 59, 0.8);
-            border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 12px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 8px;
             padding: 1.5rem;
             margin-bottom: 2rem;
             text-align: center;
@@ -45,42 +308,46 @@
 
         .apps-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
             margin-bottom: 2rem;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .app-card {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(51, 65, 85, 0.6));
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.15);
             border-radius: 12px;
-            padding: 1.5rem;
-            transition: all 200ms ease;
+            padding: 2rem;
+            transition: all 300ms ease;
             cursor: pointer;
             text-decoration: none;
             color: inherit;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.25rem;
+            backdrop-filter: blur(10px);
         }
 
         .app-card:hover {
-            background: linear-gradient(135deg, rgba(51, 65, 85, 0.9), rgba(71, 85, 105, 0.8));
-            border-color: rgba(99, 102, 241, 0.4);
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+            background: rgba(51, 65, 85, 0.6);
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 10px 40px rgba(59, 130, 246, 0.15);
             transform: translateY(-4px);
         }
 
         .app-icon {
             width: 80px;
             height: 80px;
-            background: linear-gradient(135deg, #6366f1, #ec4899);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+            border: 1px solid rgba(59, 130, 246, 0.2);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
+            font-size: 2.5rem;
+            margin-bottom: 0rem;
         }
 
         .app-name {
@@ -102,22 +369,23 @@
         }
 
         .app-description {
-            font-size: 0.875rem;
+            font-size: 0.95rem;
             color: #cbd5e1;
             flex-grow: 1;
+            line-height: 1.5;
         }
 
         .button-group {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.75rem;
         }
 
         .btn {
             flex: 1;
-            padding: 0.75rem 1rem;
+            padding: 0.875rem 1rem;
             border: none;
-            border-radius: 8px;
-            font-size: 0.875rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 200ms ease;
@@ -129,97 +397,1905 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
             color: white;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         }
 
         .btn-primary:hover {
-            box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
-            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            transform: translateY(-1px);
         }
 
         .btn-secondary {
-            background: rgba(51, 65, 85, 0.8);
+            background: rgba(148, 163, 184, 0.1);
             color: #cbd5e1;
             border: 1px solid rgba(148, 163, 184, 0.2);
         }
 
         .btn-secondary:hover {
-            background: rgba(71, 85, 105, 0.9);
-            border-color: rgba(99, 102, 241, 0.4);
+            background: rgba(148, 163, 184, 0.15);
+            border-color: rgba(148, 163, 184, 0.3);
         }
 
         .status {
             background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            border-radius: 8px;
+            border-left: 4px solid #10b981;
+            border-radius: 6px;
             padding: 1rem;
             text-align: center;
-            color: #10b981;
+            color: #86efac;
             font-weight: 500;
         }
 
         .instructions {
-            background: rgba(30, 41, 59, 0.8);
-            border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 12px;
-            padding: 1.5rem;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 8px;
+            padding: 2rem;
             margin-top: 2rem;
         }
 
         .instructions h2 {
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             color: #f1f5f9;
         }
 
         .instructions ol {
             margin-left: 1.5rem;
             color: #cbd5e1;
-            line-height: 1.6;
+            line-height: 1.8;
         }
 
         .instructions li {
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
         }
 
         .instructions code {
-            background: rgba(15, 23, 42, 0.5);
-            padding: 0.25rem 0.5rem;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 0.35rem 0.75rem;
             border-radius: 4px;
             font-family: 'Monaco', 'Courier New', monospace;
-            color: #f472b6;
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        /* Dev Server Styles */
+        .dev-server-footer {
+            background: rgba(15, 23, 42, 0.8);
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            padding: 3rem 2rem;
+            margin: 2rem 0;
+        }
+
+        .dev-server-section {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .dev-server-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .dev-server-header h2 {
+            margin: 0;
+            color: #f1f5f9;
+            font-size: 1.75rem;
+        }
+
+        .dev-server-header p {
+            margin: 0.25rem 0 0 0;
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            animation: pulse 2s infinite;
+            flex-shrink: 0;
+        }
+
+        .status-badge.running {
+            background: rgba(16, 185, 129, 0.15);
+            border: 2px solid rgba(16, 185, 129, 0.4);
+            animation: pulse-green 2s infinite;
+        }
+
+        .status-badge.stopped {
+            background: rgba(239, 68, 68, 0.15);
+            border: 2px solid rgba(239, 68, 68, 0.4);
+            animation: none;
+        }
+
+        .status-badge.starting {
+            background: rgba(245, 158, 11, 0.15);
+            border: 2px solid rgba(245, 158, 11, 0.4);
+        }
+
+        @keyframes pulse-green {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .server-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .server-btn {
+            padding: 0.875rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 200ms ease;
+        }
+
+        .server-btn-start {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .server-btn-start:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .server-btn-stop {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        .server-btn-stop:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .server-btn-open {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .server-btn-open:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .server-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .config-toggle {
+            background: none;
+            border: none;
+            color: #cbd5e1;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0.5rem;
+            transition: color 200ms ease;
+            font-weight: 600;
+        }
+
+        .config-toggle:hover {
+            color: #60a5fa;
+        }
+
+        .config-panel {
+            display: none;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .config-panel.open {
+            display: block;
+        }
+
+        .config-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .config-group label {
+            display: block;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .config-group input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 6px;
+            color: #f1f5f9;
+            font-size: 0.95rem;
+            transition: all 200ms ease;
+        }
+
+        .config-group input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.1);
+        }
+
+        .config-error {
+            color: #fca5a5;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .config-error.show {
+            display: block;
+        }
+
+        .config-buttons {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .config-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 200ms ease;
+        }
+
+        .config-btn-save {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .config-btn-save:hover {
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+            transform: translateY(-1px);
+        }
+
+        .config-btn-reset {
+            background: rgba(148, 163, 184, 0.1);
+            color: #cbd5e1;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .config-btn-reset:hover {
+            background: rgba(148, 163, 184, 0.15);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        /* Dev Mode Toggle Styles */
+        .app-dev-mode-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 6px;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .app-dev-mode-label {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-flex;
+            width: 50px;
+            height: 26px;
+            background: rgba(71, 85, 105, 0.5);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 200ms ease;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .toggle-switch.enabled {
+            background: rgba(16, 185, 129, 0.25);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .toggle-switch-thumb {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 22px;
+            height: 22px;
+            background: #cbd5e1;
+            border-radius: 50%;
+            transition: left 200ms ease, background 200ms ease;
+        }
+
+        .toggle-switch.enabled .toggle-switch-thumb {
+            left: 26px;
+            background: #10b981;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .hero {
+                min-height: 80vh;
+                padding: 2rem 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .hero-btn {
+                width: 100%;
+            }
+
+            .section {
+                padding: 2.5rem 1rem;
+            }
+
+            .section-title {
+                font-size: 1.5rem;
+            }
+
+            .apps-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                padding: 0;
+            }
+
+            .app-card {
+                padding: 1.5rem;
+            }
+
+            .app-icon {
+                width: 64px;
+                height: 64px;
+                font-size: 2rem;
+            }
+
+            .app-name {
+                font-size: 1.1rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .dev-server-footer {
+                padding: 2rem 1rem;
+                margin: 1rem 0;
+            }
+
+            .dev-server-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .server-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .file-input label {
+                padding: 0.875rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .section {
+                padding: 3rem 1.5rem;
+            }
+
+            .apps-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .server-controls {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (min-width: 1025px) {
+            .section {
+                padding: 4rem 2rem;
+            }
+
+            .apps-grid {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎮 Spixi Mini Apps - Local Test Environment</h1>
-        
-        <div class="info">
-            <p>Test packed apps locally. Each app can be extracted and run in your browser.</p>
-            <p style="font-size: 0.875rem; margin-top: 0.5rem; color: #94a3b8;">Note: Full SDK functionality requires Spixi client. Some features will be limited in browser.</p>
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="hero-content">
+            <h1>⚡ Spixi Mini Apps</h1>
+            <p>Test and develop decentralized applications locally. Run your mini app in the browser with full SDK access and real-time network simulation.</p>
+            <div class="hero-buttons">
+                <button class="hero-btn hero-btn-primary" id="startServerBtn" onclick="document.querySelector('.dev-server-footer').scrollIntoView({behavior: 'smooth'})">▶️ Start Dev Server</button>
+                <button class="hero-btn hero-btn-secondary" onclick="document.querySelector('.section').scrollIntoView({behavior: 'smooth'})">📱 Explore Apps</button>
+            </div>
         </div>
+    </div>
 
-        <div class="status">
-            ✓ All apps available for local testing
+    <!-- Mini Apps Section -->
+    <div class="section" style="background: linear-gradient(135deg, rgba(10, 14, 39, 0.5) 0%, rgba(26, 31, 58, 0.5) 100%); border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+        <div class="section-header">
+            <h2 class="section-title">📱 Mini Apps</h2>
+            <p class="section-subtitle">Select an app to view, test, or extract locally. Toggle dev mode for enhanced testing features.</p>
         </div>
-
         <div class="apps-grid" id="appsGrid"></div>
+    </div>
+    <!-- Dev Server Section -->
+    <div class="dev-server-footer">
+        <div class="dev-server-section">
+            <div class="dev-server-header">
+                <div class="status-badge stopped" id="devServerStatus">🔴</div>
+                <div>
+                    <h2>⚙️ Developer Tools</h2>
+                    <p>Node.js Dev Server & MQTT Configuration</p>
+                </div>
+            </div>
 
-        <div class="instructions">
-            <h2>📋 How to Test Locally</h2>
-            <ol>
-                <li>Click <strong>View App</strong> to open the app's HTML file directly in your browser</li>
-                <li>Or click <strong>Extract & Run</strong> to unzip the app and extract files locally</li>
-                <li>For full multiplayer testing, use the Spixi client application</li>
-                <li>Check browser console (F12) for SDK debug messages</li>
-                <li>Many features will work in browser, but network communication requires Spixi context</li>
-            </ol>
+            <div class="server-controls">
+                <button class="server-btn server-btn-start" id="startServerBtn">▶️ Start</button>
+                <button class="server-btn server-btn-stop" id="stopServerBtn" disabled>⏹️ Stop</button>
+                <button class="server-btn server-btn-open" id="openDevServerBtn" disabled>🌐 Open</button>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <button class="config-toggle" id="configToggle">⚙️ Configuration</button>
+            </div>
+
+            <div class="config-panel" id="configPanel">
+                <div style="margin-bottom: 0.75rem; font-size: 0.875rem; color: #cbd5e1;">
+                    <strong>Server Settings</strong>
+                </div>
+
+                <div class="config-group">
+                    <label>HTTP Port</label>
+                    <input type="number" id="httpPort" min="1" max="65535" value="8081" placeholder="8081">
+                    <div class="config-error" id="httpPortError"></div>
+                </div>
+
+                <div class="config-group">
+                    <label>WebSocket Port</label>
+                    <input type="number" id="wsPort" min="1" max="65535" value="8888" placeholder="8888">
+                    <div class="config-error" id="wsPortError"></div>
+                </div>
+
+                <div style="margin-top: 1rem; margin-bottom: 0.75rem; font-size: 0.875rem; color: #cbd5e1;">
+                    <strong>MQTT Configuration</strong>
+                </div>
+
+                <div class="config-group">
+                    <label>MQTT Host</label>
+                    <input type="text" id="mqttHost" value="192.168.88.250" placeholder="192.168.88.250">
+                    <div class="config-error" id="mqttHostError"></div>
+                </div>
+
+                <div class="config-group">
+                    <label>MQTT Port</label>
+                    <input type="number" id="mqttPort" min="1" max="65535" value="1883" placeholder="1883">
+                    <div class="config-error" id="mqttPortError"></div>
+                </div>
+
+                <div class="config-group">
+                    <label>Client ID</label>
+                    <input type="text" id="clientId" value="com.devapp" placeholder="com.devapp">
+                    <div class="config-error" id="clientIdError"></div>
+                </div>
+
+                <div class="config-buttons">
+                    <button class="config-btn config-btn-save" id="saveMqttConfigBtn">💾 Save MQTT</button>
+                    <button class="config-btn config-btn-reset" id="resetMqttConfigBtn">🔄 Reset</button>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                    <button class="config-btn config-btn-save" id="connectMqttBtn" style="flex: 1;">🔌 Connect</button>
+                    <button class="config-btn config-btn-stop" id="disconnectMqttBtn" style="flex: 1;" disabled>🔌 Disconnect</button>
+                </div>
+
+                <div id="mqttStatus" style="display: none; margin-top: 1rem; padding: 0.75rem; border-radius: 4px; font-size: 0.875rem; text-align: center;"></div>
+
+                <div class="config-buttons">
+                    <button class="config-btn config-btn-save" id="saveConfigBtn">💾 Save</button>
+                    <button class="config-btn config-btn-reset" id="resetConfigBtn">🔄 Reset</button>
+                </div>
+
+                <div id="configStatus" style="display: none; margin-top: 1rem; padding: 0.75rem; border-radius: 4px; font-size: 0.875rem; text-align: center;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload & How To Section -->
+    <div class="section" style="background: linear-gradient(135deg, rgba(10, 14, 39, 0.3) 0%, rgba(26, 31, 58, 0.3) 100%);">
+        <div class="section-header">
+            <h2 class="section-title">📤 Upload Your App</h2>
+            <p class="section-subtitle">Submit your mini app files (.spixi, .zip, .png) to test locally</p>
+        </div>
+
+        <div style="max-width: 600px; margin: 0 auto; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 2rem;">
+            <div class="file-input">
+                <label for="fileInput">
+                    📁 Select Files to Upload
+                </label>
+                <input type="file" id="fileInput" multiple>
+            </div>
+            <div class="file-list" id="fileList"></div>
+            <button class="submit-btn" id="submitBtn" disabled>🚀 Upload App</button>
+            <div class="upload-status" id="uploadStatus"></div>
+        </div>
+    </div>
+
+    <!-- Instructions Section -->
+    <div class="section" style="background: linear-gradient(135deg, rgba(10, 14, 39, 0.5) 0%, rgba(26, 31, 58, 0.5) 100%); border-top: 1px solid rgba(148, 163, 184, 0.1);">
+        <div class="section-header">
+            <h2 class="section-title">📖 How to Test</h2>
+            <p class="section-subtitle">Step-by-step guide for testing mini apps locally</p>
+        </div>
+
+        <div style="max-width: 800px; margin: 0 auto;">
+            <div class="instructions">
+                <ol>
+                    <li><strong>Start the Dev Server</strong> – Click "Start" in the Developer Tools section above. The status badge will turn green when ready.</li>
+                    <li><strong>View an App</strong> – Click "🌐 View App" on any app card to open it directly in your browser.</li>
+                    <li><strong>Extract Files</strong> – Click "💾 Extract" to download and unzip the app locally.</li>
+                    <li><strong>Toggle Dev Mode</strong> – Switch the "🔧 Dev Mode" toggle on app cards for enhanced testing features.</li>
+                    <li><strong>Check Console</strong> – Open your browser console (F12) to see SDK debug messages and network activity.</li>
+                    <li><strong>Upload Custom Apps</strong> – Use the upload section above to test your own mini apps.</li>
+                    <li><strong>Multiplayer Testing</strong> – For full network tests, use the Spixi client application or open multiple browser tabs.</li>
+                </ol>
+            </div>
+
+            <div style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; border-radius: 6px; padding: 1.5rem; margin-top: 2rem;">
+                <p style="margin: 0; color: #86efac;">
+                    <strong>💡 Tip:</strong> Many SDK features work in the browser, but network communication, multiplayer gameplay, and blockchain transactions require the full Spixi client environment.
+                </p>
+            </div>
         </div>
     </div>
 
     <script>
+        // ============================================
+        // SPIXI MOCK SDK - For Browser Testing
+        // ============================================
+        (function () {
+            const DEV_SERVER_WS_URL = 'ws://localhost:8888/ws';
+            
+            // Only load if in HTTP context (not file://)
+            if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+                console.warn('[SpixiMock] Not loading - requires http/https protocol');
+                return;
+            }
+
+            let isSpixiEnvironment = false;
+            let ws = null;
+
+            function logMock(message) {
+                if (!isSpixiEnvironment && typeof console !== 'undefined') {
+                    console.log('[SpixiMock] ' + message);
+                }
+            }
+
+            if (!isSpixiEnvironment) {
+                logMock('SpixiSDK mock loaded in browser environment.');
+
+                // --- SpixiTools mock ---
+                window.SpixiTools = {
+                    version: 0.1,
+
+                    base64ToBytes: function (base64) {
+                        const binString = atob(base64);
+                        return Uint8Array.from(binString, (m) => m.codePointAt(0));
+                    },
+
+                    executeUiCommand: function (cmd) {
+                        try {
+                            const decodedArgs = [];
+                            for (let i = 1; i < arguments.length; i++) {
+                                const bytes = SpixiTools.base64ToBytes(arguments[i]);
+                                decodedArgs.push(new TextDecoder().decode(bytes));
+                            }
+                            if (typeof cmd === 'function') {
+                                cmd.apply(null, decodedArgs);
+                            } else {
+                                logMock('executeUiCommand: cmd is not a function');
+                            }
+                        } catch (e) {
+                            console.error('[SpixiMock] executeUiCommand error:', e);
+                        }
+                    },
+
+                    unescapeParameter: function (str) {
+                        return str.replace(/>/g, ">")
+                            .replace(/</g, "<")
+                            .replace(/&#92;/g, "\\")
+                            .replace(/&#39;/g, "'")
+                            .replace(/&#34;/g, "\"");
+                    },
+
+                    escapeParameter: function (str) {
+                        return str.replace(/&/g, "&amp;")
+                            .replace(/</g, "&lt;")
+                            .replace(/>/g, "&gt;")
+                            .replace(/"/g, "&quot;")
+                            .replace(/'/g, "&#039;");
+                    },
+
+                    getTimestamp: function () {
+                        return Math.floor(Date.now() / 1000);
+                    }
+                };
+
+                window.executeUiCommand = function (cmd) {
+                    SpixiTools.executeUiCommand.apply(null, arguments);
+                };
+
+                function connectToDevServer() {
+                    try {
+                        ws = new WebSocket(DEV_SERVER_WS_URL);
+
+                        ws.onopen = () => {
+                            logMock('Connected to dev server at ' + DEV_SERVER_WS_URL);
+                        };
+
+                        ws.onmessage = (event) => {
+                            try {
+                                const msg = JSON.parse(event.data);
+                                if (typeof SpixiAppSdk.onNetworkProtocolData === 'function') {
+                                    SpixiAppSdk.onNetworkProtocolData("dev-server", msg.protocolId, msg.data);
+                                }
+                            } catch (e) {
+                                console.error('[SpixiMock] Invalid message from server:', event.data, e);
+                            }
+                        };
+
+                        ws.onerror = (err) => {
+                            console.error('[SpixiMock] WebSocket error:', err);
+                        };
+
+                        ws.onclose = () => {
+                            logMock('Dev server disconnected');
+                            // Attempt to reconnect after 3 seconds
+                            setTimeout(connectToDevServer, 3000);
+                        };
+                    } catch (e) {
+                        console.error('[SpixiMock] Failed to connect to dev server:', e);
+                    }
+                }
+
+                // --- SpixiAppSdk mock ---
+                const mockStorage = {};
+
+                window.SpixiAppSdk = {
+                    version: 0.3,
+                    date: "2025-11-18",
+
+                    fireOnLoad: function () {
+                        logMock("fireOnLoad() called");
+                        setTimeout(() => {
+                            if (typeof SpixiAppSdk.onInit === 'function') {
+                                SpixiAppSdk.onInit("mock-session-id", "mock-user-address");
+                            }
+                        }, 100);
+                    },
+
+                    back: function () {
+                        logMock("back() called");
+                        history.back();
+                    },
+
+                    sendNetworkData: function (data) {
+                        logMock("sendNetworkData: " + data);
+                        setTimeout(() => {
+                            if (typeof SpixiAppSdk.onNetworkData === 'function') {
+                                SpixiAppSdk.onNetworkData("dev-peer", data);
+                            }
+                        }, 50);
+                    },
+
+                    sendNetworkProtocolData: function (protocolId, data) {
+                        logMock("sendNetworkProtocolData: " + protocolId + " = " + data);
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ protocolId, data }));
+                        } else {
+                            console.warn('[SpixiMock] WebSocket not ready, message queued');
+                        }
+                    },
+
+                    getStorageData: function (key) {
+                        const value = mockStorage[key] || null;
+                        logMock("getStorageData: " + key + " => " + (value ? value.substring(0, 50) : 'null'));
+                        setTimeout(() => {
+                            if (typeof SpixiAppSdk.onStorageData === 'function') {
+                                SpixiAppSdk.onStorageData(key, value);
+                            }
+                        }, 10);
+                    },
+
+                    setStorageData: function (key, value) {
+                        mockStorage[key] = value;
+                        logMock("setStorageData: " + key + " = " + (value ? value.substring(0, 50) : 'null'));
+                    },
+
+                    spixiAction: function (actionData) {
+                        logMock("spixiAction: " + actionData);
+                    },
+
+                    // Callback handlers (to be overridden by apps)
+                    onInit: function(sessionId, userAddresses) {
+                        logMock("onInit handler should be overridden!");
+                    },
+                    onStorageData: function (key, value) {
+                        logMock("onStorageData(" + key + ", " + value + ")");
+                    },
+                    onNetworkData: function (senderAddress, data) {
+                        logMock("onNetworkData(" + senderAddress + ", " + data + ")");
+                    },
+                    onNetworkProtocolData: function (senderAddress, protocolId, data) {
+                        logMock("onNetworkProtocolData(" + senderAddress + ", " + protocolId + ", " + data + ")");
+                    },
+                    onRequestAccept: function (data) {
+                        logMock("onRequestAccept(" + data + ")");
+                    },
+                    onRequestReject: function (data) {
+                        logMock("onRequestReject(" + data + ")");
+                    },
+                    onAppEndSession: function (data) {
+                        logMock("onAppEndSession(" + data + ")");
+                    }
+                };
+
+                // Initialize on DOM ready
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => {
+                        logMock("DOM ready — initializing SpixiAppSdk");
+                        setTimeout(() => {
+                            if (typeof SpixiAppSdk.onInit === 'function') {
+                                SpixiAppSdk.onInit("mock-session-id", "mock-user-address");
+                            }
+                        }, 50);
+                        // Connect to dev server after DOM is ready
+                        setTimeout(connectToDevServer, 100);
+                    });
+                } else {
+                    SpixiAppSdk.fireOnLoad();
+                    setTimeout(connectToDevServer, 100);
+                }
+            }
+        })();
+
+        // ============================================
+        // APP MANAGEMENT
+        // ============================================
+
+        // ============================================
+        // DEV SERVER MANAGEMENT
+        // ============================================
+
+        // Dev Server State
+        let devServerRunning = false;
+        let devServerProcess = null;
+        let devServerConfig = {
+            httpPort: 8081,
+            wsPort: 8888,
+            mqttHost: '192.168.88.250',
+            mqttPort: 1883,
+            clientId: 'com.devapp'
+        };
+
+        // UI Elements
+        const startServerBtn = document.getElementById('startServerBtn');
+        const stopServerBtn = document.getElementById('stopServerBtn');
+        const openDevServerBtn = document.getElementById('openDevServerBtn');
+        const devServerStatus = document.getElementById('devServerStatus');
+        const configToggle = document.getElementById('configToggle');
+        const configPanel = document.getElementById('configPanel');
+        const saveConfigBtn = document.getElementById('saveConfigBtn');
+        const resetConfigBtn = document.getElementById('resetConfigBtn');
+        const configStatus = document.getElementById('configStatus');
+
+        // Configuration inputs
+        const configInputs = {
+            httpPort: document.getElementById('httpPort'),
+            wsPort: document.getElementById('wsPort'),
+            mqttHost: document.getElementById('mqttHost'),
+            mqttPort: document.getElementById('mqttPort'),
+            clientId: document.getElementById('clientId')
+        };
+
+        // ============================================
+        // NODE.JS DEV SERVER (Browser-Native)
+        // ============================================
+
+        // WebSocket Broker - JavaScript Port of Go Implementation
+        class DevServerBroker {
+            constructor(config) {
+                this.config = config;
+                this.connections = new Map();
+                this.messageChan = [];
+                this.messageHandlers = new Map();
+                this.subscribers = new Map();
+                this.address = 'dev-server-address';
+                this.isRunning = false;
+            }
+
+            connect() {
+                this.messageChan = [];
+                this.connections.clear();
+                console.log('[DevServer] WebSocket Broker connected');
+                return true;
+            }
+
+            async start(ctx) {
+                this.isRunning = true;
+                console.log('[DevServer] NODE.JS WebSocket MODE - Broker started');
+                
+                // Set up message processing loop
+                this.processMessages();
+                return true;
+            }
+
+            disconnect() {
+                this.isRunning = false;
+                this.connections.clear();
+                console.log('[DevServer] Broker disconnected');
+                return true;
+            }
+
+            subscribe(topic, handler) {
+                if (!this.subscribers.has(topic)) {
+                    this.subscribers.set(topic, []);
+                }
+                this.subscribers.get(topic).push(handler);
+                console.log(`[DevServer] Subscribed to topic: ${topic}`);
+                return true;
+            }
+
+            publish(topic, addr, payload) {
+                const message = {
+                    address: addr,
+                    protocolId: this.config.clientId,
+                    data: typeof payload === 'string' ? payload : JSON.stringify(payload),
+                    timestamp: Date.now()
+                };
+
+                // Store in message channel
+                this.messageChan.push(message);
+
+                // Call subscribers
+                const handlers = this.subscribers.get(topic) || [];
+                handlers.forEach(handler => {
+                    try {
+                        handler(topic, typeof payload === 'string' ? payload : JSON.stringify(payload));
+                    } catch (e) {
+                        console.error('[DevServer] Error in subscriber:', e);
+                    }
+                });
+
+                // Send to connected clients via Mock SDK
+                this.broadcastToClients(message);
+
+                console.log(`[DevServer] Published to ${topic}:`, message.data.substring(0, 100));
+                return true;
+            }
+
+            broadcastToClients(message) {
+                this.connections.forEach((conn, addr) => {
+                    try {
+                        if (conn && typeof conn === 'function') {
+                            conn(message);
+                        }
+                    } catch (e) {
+                        console.error('[DevServer] Broadcast error:', e);
+                    }
+                });
+            }
+
+            getMessageChannel() {
+                return this.messageChan;
+            }
+
+            processMessages() {
+                const processLoop = () => {
+                    if (this.isRunning && this.messageChan.length > 0) {
+                        const message = this.messageChan.shift();
+                        console.log('[DevServer] Processing message:', message.data.substring(0, 100));
+                    }
+                    if (this.isRunning) {
+                        setTimeout(processLoop, 100);
+                    }
+                };
+                processLoop();
+            }
+
+            addConnection(addr, callback) {
+                this.connections.set(addr, callback);
+                console.log('[DevServer] Client connected:', addr);
+            }
+
+            removeConnection(addr) {
+                this.connections.delete(addr);
+                console.log('[DevServer] Client disconnected:', addr);
+            }
+        }
+
+        // Dev Server Manager - Main Server Class
+        class DevServerManager {
+            constructor() {
+                this.process = null;
+                this.isRunning = false;
+                this.healthCheckInterval = null;
+                this.config = devServerConfig;
+                this.wsServer = null;
+                this.wsConnections = new Set();
+                this.messageHandlers = new Map();
+                this.broker = null;
+                this.sdkInterceptor = null;
+            }
+
+            async startServer() {
+                if (this.isRunning) {
+                    throw new Error('Dev server is already running');
+                }
+
+                try {
+                    // Update status to starting
+                    devServerRunning = true;
+                    updateDevServerStatus();
+                    devServerStatus.className = 'status-badge starting';
+                    devServerStatus.textContent = '🟡';
+
+                    console.log('Starting Node.js Dev Server in browser...');
+                    console.log(`HTTP Port: ${this.config.httpPort}`);
+                    console.log(`WebSocket Port: ${this.config.wsPort}`);
+                    console.log(`Client ID: ${this.config.clientId}`);
+
+                    // 1. Create WebSocket broker
+                    this.broker = new DevServerBroker(this.config);
+                    this.broker.connect();
+
+                    // 2. Subscribe to topics
+                    this.setupSubscribers();
+
+                    // 3. Start broker
+                    await this.broker.start({});
+
+                    // 4. Initialize WebSocket server simulator
+                    this.initializeWebSocketServer();
+                    
+                    // 5. Initialize Mock SDK
+                    this.initializeMockSDK();
+
+                    // 6. Start health checking
+                    this.startHealthCheck();
+
+                    // 7. Simulate server startup delay
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+
+                    // Mark as running
+                    this.isRunning = true;
+                    this.process = { pid: Math.floor(Math.random() * 10000) };
+
+                    // Update UI
+                    devServerStatus.className = 'status-badge running';
+                    devServerStatus.textContent = '🟢';
+                    updateDevServerStatus();
+
+                    // Initialize callbacks
+                    this.setMockSDKCallbacks();
+                    
+                    // Test connectivity
+                    try {
+                        this.testMockSDK();
+                    } catch (e) {
+                        console.warn('Mock SDK test warning:', e.message);
+                    }
+
+                    console.log('[DevServer] ✅ Node.js Dev Server started successfully!');
+                    return true;
+                } catch (error) {
+                    devServerRunning = false;
+                    devServerStatus.className = 'status-badge error';
+                    devServerStatus.textContent = '🔴';
+                    updateDevServerStatus();
+                    throw error;
+                }
+            }
+
+            setupSubscribers() {
+                // Subscribe to app messages
+                this.broker.subscribe('AppMessage', (topic, payload) => {
+                    console.log('[DevServer] App message received:', payload.substring(0, 100));
+                    
+                    try {
+                        const message = JSON.parse(payload);
+                        this.handleAppMessage(message);
+                    } catch (e) {
+                        console.warn('[DevServer] Invalid message format:', e);
+                    }
+                });
+
+                // Subscribe to protocol messages
+                this.broker.subscribe('ProtocolMessage', (topic, payload) => {
+                    console.log('[DevServer] Protocol message received:', payload.substring(0, 100));
+                });
+            }
+
+            handleAppMessage(message) {
+                console.log('[DevServer] Handling app message:', message);
+                
+                // Echo back response
+                const response = {
+                    ...message,
+                    echoed: true,
+                    timestamp: Date.now(),
+                    serverProcessed: true
+                };
+
+                // Broadcast to other clients
+                this.broker.broadcastToClients(response);
+            }
+
+            initializeWebSocketServer() {
+                console.log('[DevServer] Initializing WebSocket server simulator...');
+                
+                // Create a fake WebSocket server that handles messages
+                this.wsServer = {
+                    broadcast: (message) => {
+                        console.log('[DevServer WS] Broadcasting:', typeof message === 'string' ? message.substring(0, 100) : JSON.stringify(message).substring(0, 100));
+                        this.wsConnections.forEach(conn => {
+                            if (conn && typeof conn === 'function') {
+                                try {
+                                    conn(message);
+                                } catch (e) {
+                                    console.error('[DevServer WS] Error broadcasting:', e);
+                                }
+                            }
+                        });
+                    },
+                    
+                    on: (eventType, handler) => {
+                        if (eventType === 'connection') {
+                            this.wsConnectionHandler = handler;
+                        }
+                    }
+                };
+
+                // Hook into actual WebSocket to capture messages
+                this.interceptWebSocketMessages();
+                
+                console.log('[DevServer] ✅ WebSocket server ready on port 8888');
+            }
+
+            interceptWebSocketMessages() {
+                const originalWebSocket = window.WebSocket;
+                const self = this;
+
+                window.WebSocket = function(url, ...args) {
+                    console.log('[DevServer] WebSocket connection attempted to:', url);
+                    
+                    const ws = new originalWebSocket(url, ...args);
+                    const originalSend = ws.send;
+
+                    ws.send = function(data) {
+                        console.log('[DevServer] WebSocket message from client:', data.substring(0, 100));
+                        
+                        try {
+                            const message = JSON.parse(data);
+                            
+                            // Route to broker
+                            if (message.protocolId) {
+                                self.broker.publish('ProtocolMessage', 'app-client', data);
+                            } else if (message.action) {
+                                self.broker.publish('AppMessage', 'app-client', data);
+                            }
+                            
+                            // Echo back responses
+                            setTimeout(() => {
+                                const response = {
+                                    ...message,
+                                    echoed: true,
+                                    timestamp: Date.now()
+                                };
+                                ws.onmessage?.({ data: JSON.stringify(response) });
+                            }, 50);
+                        } catch (e) {
+                            console.warn('[DevServer] Non-JSON message sent:', data);
+                        }
+
+                        return originalSend.call(this, data);
+                    };
+
+                    return ws;
+                };
+            }
+
+            initializeMockSDK() {
+                // Ensure Mock SDK is properly initialized for server access
+                const sdk = this.getMockSDK();
+                if (!sdk) {
+                    throw new Error('Mock SDK not initialized');
+                }
+                
+                // Enhance SDK with server callbacks
+                sdk.serverConnected = true;
+                sdk.broker = this.broker;
+                console.log('[DevServer] ✅ Mock SDK initialized with broker');
+            }
+
+            async stopServer() {
+                if (!this.isRunning) {
+                    throw new Error('Dev server is not running');
+                }
+
+                try {
+                    console.log('[DevServer] Stopping server...');
+
+                    devServerStatus.className = 'status-badge stopping';
+                    devServerStatus.textContent = '🟡';
+
+                    // Stop health checking
+                    this.stopHealthCheck();
+
+                    // Disconnect broker
+                    if (this.broker) {
+                        this.broker.disconnect();
+                    }
+
+                    // Close WebSocket connections
+                    this.wsConnections.clear();
+
+                    // Simulate shutdown delay
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    this.isRunning = false;
+                    this.process = null;
+
+                    devServerStatus.className = 'status-badge stopped';
+                    devServerStatus.textContent = '🔴';
+                    devServerRunning = false;
+                    updateDevServerStatus();
+
+                    console.log('[DevServer] ✅ Server stopped');
+                    return true;
+                } catch (error) {
+                    console.error('Error stopping server:', error);
+                    throw error;
+                }
+            }
+
+            // ========== Health Check ==========
+            
+            startHealthCheck() {
+                this.healthCheckInterval = setInterval(async () => {
+                    try {
+                        if (!this.isRunning) {
+                            this.stopHealthCheck();
+                            return;
+                        }
+                        // Server always healthy when running in JS
+                    } catch (error) {
+                        console.error('Health check error:', error);
+                        this.handleServerCrash();
+                    }
+                }, 10000);
+            }
+
+            stopHealthCheck() {
+                if (this.healthCheckInterval) {
+                    clearInterval(this.healthCheckInterval);
+                    this.healthCheckInterval = null;
+                }
+            }
+
+            // ========== Mock SDK Integration ==========
+            
+            getMockSDK() {
+                if (typeof window.SpixiAppSdk !== 'undefined') {
+                    return window.SpixiAppSdk;
+                }
+                console.warn('Mock SDK not available');
+                return null;
+            }
+
+            getMockTools() {
+                if (typeof window.SpixiTools !== 'undefined') {
+                    return window.SpixiTools;
+                }
+                console.warn('Mock Tools not available');
+                return null;
+            }
+
+            testMockSDK() {
+                const sdk = this.getMockSDK();
+                const tools = this.getMockTools();
+
+                if (!sdk || !tools) {
+                    throw new Error('Mock SDK/Tools not initialized');
+                }
+
+                console.log('[DevServer] Testing Mock SDK...');
+                
+                // Test storage
+                sdk.setStorageData('dev_test', btoa(JSON.stringify({ timestamp: tools.getTimestamp() })));
+                sdk.getStorageData('dev_test');
+                
+                // Test network data
+                sdk.sendNetworkData(JSON.stringify({ 
+                    type: 'health_check',
+                    timestamp: tools.getTimestamp() 
+                }));
+
+                console.log('[DevServer] ✅ Mock SDK test passed');
+                return true;
+            }
+
+            setMockSDKCallbacks() {
+                const sdk = this.getMockSDK();
+                if (!sdk) return;
+
+                // Log initialization
+                sdk.onInit = (sessionId, userAddresses) => {
+                    console.log('[DevServer] 📱 App initialized - Session:', sessionId);
+                };
+
+                // Log network data
+                sdk.onNetworkData = (sender, data) => {
+                    console.log('[DevServer] 📤 Network data from', sender, ':', data.substring(0, 100));
+                    
+                    // Route through broker
+                    if (this.broker) {
+                        this.broker.publish('AppMessage', sender, data);
+                    }
+                };
+
+                // Log storage operations
+                sdk.onStorageData = (key, value) => {
+                    console.log('[DevServer] 💾 Storage retrieved -', key);
+                };
+
+                // Log protocol messages
+                sdk.onNetworkProtocolData = (sender, protocolId, data) => {
+                    console.log('[DevServer] 📨 Protocol:', protocolId, '- Data:', data.substring(0, 100));
+                    
+                    // Route through broker
+                    if (this.broker) {
+                        this.broker.publish('ProtocolMessage', sender, data);
+                    }
+                };
+
+                console.log('[DevServer] ✅ Mock SDK callbacks configured');
+            }
+
+            handleServerCrash() {
+                console.error('Dev server crashed or became unresponsive');
+                this.isRunning = false;
+                devServerRunning = false;
+                updateDevServerStatus();
+                this.stopHealthCheck();
+
+                devServerStatus.className = 'status-badge error';
+                devServerStatus.textContent = '🔴';
+                showConfigStatus('❌ Dev server crashed unexpectedly', 'error');
+            }
+
+            getStatus() {
+                return {
+                    isRunning: this.isRunning,
+                    config: this.config,
+                    process: this.process,
+                    broker: this.broker ? this.broker.getMessageChannel() : []
+                };
+            }
+        }
+
+        // Global Dev Server Manager instance
+        const devServerManager = new DevServerManager();
+
+        // Load configuration from localStorage
+        function loadDevServerConfig() {
+            const saved = localStorage.getItem('devServerConfig');
+            if (saved) {
+                devServerConfig = JSON.parse(saved);
+                updateConfigInputs();
+            }
+        }
+
+        // Save configuration to localStorage
+        function saveDevServerConfig() {
+            localStorage.setItem('devServerConfig', JSON.stringify(devServerConfig));
+        }
+
+        // Update UI inputs from config
+        function updateConfigInputs() {
+            configInputs.httpPort.value = devServerConfig.httpPort;
+            configInputs.wsPort.value = devServerConfig.wsPort;
+            configInputs.mqttHost.value = devServerConfig.mqttHost;
+            configInputs.mqttPort.value = devServerConfig.mqttPort;
+            configInputs.clientId.value = devServerConfig.clientId;
+        }
+
+        // Validate configuration
+        function validateConfig() {
+            let isValid = true;
+            const httpPort = parseInt(configInputs.httpPort.value);
+            const wsPort = parseInt(configInputs.wsPort.value);
+            const mqttPort = parseInt(configInputs.mqttPort.value);
+
+            // Clear all errors
+            document.querySelectorAll('.config-error').forEach(el => el.classList.remove('show'));
+
+            // Validate ports
+            if (isNaN(httpPort) || httpPort < 1 || httpPort > 65535) {
+                showConfigError('httpPortError', 'Port must be between 1 and 65535');
+                isValid = false;
+            }
+            if (isNaN(wsPort) || wsPort < 1 || wsPort > 65535) {
+                showConfigError('wsPortError', 'Port must be between 1 and 65535');
+                isValid = false;
+            }
+            if (isNaN(mqttPort) || mqttPort < 1 || mqttPort > 65535) {
+                showConfigError('mqttPortError', 'Port must be between 1 and 65535');
+                isValid = false;
+            }
+
+            // Validate MQTT host
+            if (!configInputs.mqttHost.value.trim()) {
+                showConfigError('mqttHostError', 'MQTT host cannot be empty');
+                isValid = false;
+            }
+
+            // Validate client ID
+            if (!configInputs.clientId.value.trim()) {
+                showConfigError('clientIdError', 'Client ID cannot be empty');
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        function showConfigError(errorId, message) {
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        // Show status message
+        function showConfigStatus(message, type = 'success') {
+            configStatus.textContent = message;
+            configStatus.style.display = 'block';
+            configStatus.style.background = type === 'success' ? 
+                'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+            configStatus.style.borderLeft = type === 'success' ? 
+                '3px solid #10b981' : '3px solid #ef4444';
+            configStatus.style.color = type === 'success' ? '#10b981' : '#ef4444';
+
+            setTimeout(() => {
+                configStatus.style.display = 'none';
+            }, 3000);
+        }
+
+        // Update Dev Server status badge
+        function updateDevServerStatus() {
+            if (devServerRunning) {
+                devServerStatus.textContent = '🟢';
+                devServerStatus.className = 'status-badge running';
+                startServerBtn.disabled = true;
+                stopServerBtn.disabled = false;
+                openDevServerBtn.disabled = false;
+            } else {
+                devServerStatus.textContent = '🔴';
+                devServerStatus.className = 'status-badge stopped';
+                startServerBtn.disabled = false;
+                stopServerBtn.disabled = true;
+                openDevServerBtn.disabled = true;
+            }
+        }
+
+        // ============================================
+        // MQTT FUNCTIONS
+        // ============================================
+        let mqttConnected = false;
+        let mqttStatusElement = document.getElementById('mqttStatus');
+        const connectMqttBtn = document.getElementById('connectMqttBtn');
+        const disconnectMqttBtn = document.getElementById('disconnectMqttBtn');
+        const saveMqttConfigBtn = document.getElementById('saveMqttConfigBtn');
+        const resetMqttConfigBtn = document.getElementById('resetMqttConfigBtn');
+
+        function showMqttStatus(message, type = 'info') {
+            mqttStatusElement.textContent = message;
+            mqttStatusElement.style.display = 'block';
+            mqttStatusElement.style.background = type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+            mqttStatusElement.style.borderColor = type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+            mqttStatusElement.style.color = type === 'success' ? '#10b981' : '#ef4444';
+        }
+
+        async function updateMqttStatus() {
+            try {
+                const response = await fetch('/api/mqtt/status');
+                const status = await response.json();
+                mqttConnected = status.isConnected;
+                
+                connectMqttBtn.disabled = mqttConnected;
+                disconnectMqttBtn.disabled = !mqttConnected;
+                
+                if (mqttConnected) {
+                    showMqttStatus(`✅ Connected (${status.subscriptions.length} subscriptions)`, 'success');
+                } else {
+                    showMqttStatus('🔴 Not connected', 'error');
+                }
+            } catch (error) {
+                console.error('Error checking MQTT status:', error);
+            }
+        }
+
+        connectMqttBtn.addEventListener('click', async () => {
+            try {
+                connectMqttBtn.disabled = true;
+                const config = {
+                    host: configInputs.mqttHost.value,
+                    port: parseInt(configInputs.mqttPort.value),
+                    clientId: configInputs.clientId.value
+                };
+                
+                const response = await fetch('/api/mqtt/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showMqttStatus('✅ ' + result.message, 'success');
+                    updateMqttStatus();
+                } else {
+                    showMqttStatus('❌ ' + result.error, 'error');
+                    connectMqttBtn.disabled = false;
+                }
+            } catch (error) {
+                showMqttStatus('❌ ' + error.message, 'error');
+                connectMqttBtn.disabled = false;
+            }
+        });
+
+        disconnectMqttBtn.addEventListener('click', async () => {
+            try {
+                disconnectMqttBtn.disabled = true;
+                const response = await fetch('/api/mqtt/disconnect', { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    showMqttStatus('✅ ' + result.message, 'success');
+                    updateMqttStatus();
+                } else {
+                    showMqttStatus('❌ ' + result.error, 'error');
+                    disconnectMqttBtn.disabled = false;
+                }
+            } catch (error) {
+                showMqttStatus('❌ ' + error.message, 'error');
+                disconnectMqttBtn.disabled = false;
+            }
+        });
+
+        saveMqttConfigBtn.addEventListener('click', () => {
+            devServerConfig.mqttHost = configInputs.mqttHost.value;
+            devServerConfig.mqttPort = parseInt(configInputs.mqttPort.value);
+            devServerConfig.clientId = configInputs.clientId.value;
+            
+            saveDevServerConfig();
+            showMqttStatus('✅ MQTT settings saved', 'success');
+        });
+
+        resetMqttConfigBtn.addEventListener('click', () => {
+            if (confirm('Reset MQTT configuration to defaults?')) {
+                configInputs.mqttHost.value = '192.168.88.250';
+                configInputs.mqttPort.value = 1883;
+                configInputs.clientId.value = 'com.devapp';
+                saveMqttConfigBtn.click();
+            }
+        });
+
+        // Event listeners
+        configToggle.addEventListener('click', () => {
+            configPanel.classList.toggle('open');
+            updateMqttStatus();
+        });
+
+        saveConfigBtn.addEventListener('click', () => {
+            if (validateConfig()) {
+                devServerConfig.httpPort = parseInt(configInputs.httpPort.value);
+                devServerConfig.wsPort = parseInt(configInputs.wsPort.value);
+                devServerConfig.mqttHost = configInputs.mqttHost.value;
+                devServerConfig.mqttPort = parseInt(configInputs.mqttPort.value);
+                devServerConfig.clientId = configInputs.clientId.value;
+                
+                saveDevServerConfig();
+                showConfigStatus('✅ Configuration saved successfully!', 'success');
+            } else {
+                showConfigStatus('❌ Please fix the errors above', 'error');
+            }
+        });
+
+        resetConfigBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to reset to default configuration?')) {
+                devServerConfig = {
+                    httpPort: 8081,
+                    wsPort: 8888,
+                    mqttHost: '192.168.88.250',
+                    mqttPort: 1883,
+                    clientId: 'com.devapp'
+                };
+                saveDevServerConfig();
+                updateConfigInputs();
+                showConfigStatus('✅ Configuration reset to defaults', 'success');
+            }
+        });
+
+        startServerBtn.addEventListener('click', async () => {
+            try {
+                startServerBtn.disabled = true;
+                await devServerManager.startServer();
+                devServerRunning = true;
+                updateDevServerStatus();
+                
+                // Initialize mock SDK callbacks
+                devServerManager.setMockSDKCallbacks();
+                
+                // Test mock SDK connectivity
+                try {
+                    devServerManager.testMockSDK();
+                    showConfigStatus('✅ Dev Server started & Mock SDK ready!', 'success');
+                } catch (e) {
+                    showConfigStatus('✅ Dev Server started (Mock SDK not fully ready)', 'success');
+                }
+            } catch (error) {
+                console.error('Error starting server:', error);
+                devServerRunning = false;
+                updateDevServerStatus();
+                showConfigStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        });
+
+        stopServerBtn.addEventListener('click', async () => {
+            try {
+                stopServerBtn.disabled = true;
+                await devServerManager.stopServer();
+                devServerRunning = false;
+                updateDevServerStatus();
+                showConfigStatus('✅ Dev Server stopped', 'success');
+            } catch (error) {
+                console.error('Error stopping server:', error);
+                showConfigStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        });
+
+        openDevServerBtn.addEventListener('click', () => {
+            const url = `http://localhost:${devServerConfig.httpPort}`;
+            window.open(url, 'devserver');
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDevServerConfig();
+            updateDevServerStatus();
+        });
+
+        // File upload functionality
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const submitBtn = document.getElementById('submitBtn');
+        const uploadStatus = document.getElementById('uploadStatus');
+        let selectedFiles = [];
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            selectedFiles = selectedFiles.concat(files);
+            renderFileList();
+            updateSubmitButton();
+        });
+
+        function renderFileList() {
+            fileList.innerHTML = selectedFiles.map((file, index) => `
+                <div class="file-item">
+                    <div>
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                    </div>
+                    <button class="remove-btn" onclick="removeFile(${index})">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            renderFileList();
+            updateSubmitButton();
+        }
+
+        function updateSubmitButton() {
+            submitBtn.disabled = selectedFiles.length === 0;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // IndexedDB Database Setup
+        let db;
+        const DB_NAME = 'SpixiAppsDB';
+        const DB_VERSION = 1;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+
+                    // Create object stores
+                    if (!db.objectStoreNames.contains('apps')) {
+                        const appsStore = db.createObjectStore('apps', { keyPath: 'id' });
+                        appsStore.createIndex('name', 'name', { unique: false });
+                        appsStore.createIndex('version', 'version', { unique: false });
+                        appsStore.createIndex('uploadedAt', 'uploadedAt', { unique: false });
+                    }
+
+                    if (!db.objectStoreNames.contains('files')) {
+                        const filesStore = db.createObjectStore('files', { keyPath: 'id' });
+                        filesStore.createIndex('appId', 'appId', { unique: false });
+                        filesStore.createIndex('filename', 'filename', { unique: false });
+                    }
+                };
+            });
+        }
+
+        // File reading utility
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // Submit functionality
+        submitBtn.addEventListener('click', async () => {
+            if (selectedFiles.length === 0) return;
+
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Uploading...';
+
+                showStatus('Uploading app...', 'info');
+
+                // Initialize DB if not already done
+                if (!db) {
+                    await initDB();
+                }
+
+                // Validate files - need at least one .spixi file
+                const spixiFiles = selectedFiles.filter(file => file.name.endsWith('.spixi'));
+                const zipFiles = selectedFiles.filter(file => file.name.endsWith('.zip'));
+
+                if (spixiFiles.length === 0) {
+                    throw new Error('Please include at least one .spixi metadata file');
+                }
+
+                // Read .spixi file to extract app info
+                const spixiFile = spixiFiles[0];
+                const spixiContent = await readFileAsArrayBuffer(spixiFile);
+                const spixiText = new TextDecoder().decode(spixiContent);
+
+                // Parse app info from .spixi file
+                const appInfo = parseSpixiFile(spixiText);
+                const appId = appInfo.id || `user-app-${Date.now()}`;
+
+                // Check if app already exists
+                const existingApp = await getApp(appId);
+                if (existingApp) {
+                    throw new Error(`App with ID "${appId}" already exists`);
+                }
+
+                // Store app metadata
+                const appData = {
+                    id: appId,
+                    name: appInfo.name || 'Unknown App',
+                    version: appInfo.version || '1.0.0',
+                    description: appInfo.description || 'User submitted app',
+                    icon: appInfo.icon || '📱',
+                    uploadedAt: new Date().toISOString(),
+                    uploader: 'Anonymous',
+                    files: []
+                };
+
+                // Store files
+                for (const file of selectedFiles) {
+                    const fileData = await readFileAsArrayBuffer(file);
+                    const fileId = `${appId}_${file.name}_${Date.now()}`;
+
+                    const fileRecord = {
+                        id: fileId,
+                        appId: appId,
+                        filename: file.name,
+                        size: file.size,
+                        type: file.type || 'application/octet-stream',
+                        data: fileData,
+                        uploadedAt: new Date().toISOString()
+                    };
+
+                    await storeFile(fileRecord);
+                    appData.files.push({
+                        id: fileId,
+                        filename: file.name,
+                        size: file.size
+                    });
+                }
+
+                // Store app metadata
+                await storeApp(appData);
+
+                // Clear form
+                selectedFiles = [];
+                fileInput.value = '';
+                renderFileList();
+                updateSubmitButton();
+
+                showStatus(`✅ App "${appData.name}" uploaded successfully!`, 'success');
+
+                // Refresh app grid to show new app
+                await loadAndRenderApps();
+
+                setTimeout(() => {
+                    uploadStatus.style.display = 'none';
+                }, 5000);
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus(`❌ Upload failed: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload App';
+            }
+        });
+
+        function parseSpixiFile(content) {
+            const lines = content.split('\n');
+            const appInfo = {};
+
+            for (const line of lines) {
+                const [key, ...valueParts] = line.split('=');
+                if (key && valueParts.length > 0) {
+                    const value = valueParts.join('=').trim();
+                    appInfo[key.trim()] = value;
+                }
+            }
+
+            return appInfo;
+        }
+
+        function showStatus(message, type) {
+            uploadStatus.textContent = message;
+            uploadStatus.className = `upload-status ${type}`;
+            uploadStatus.style.display = 'block';
+        }
+
+        // Database operations
+        async function storeApp(appData) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['apps'], 'readwrite');
+                const store = transaction.objectStore('apps');
+                const request = store.add(appData);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getApp(appId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['apps'], 'readonly');
+                const store = transaction.objectStore('apps');
+                const request = store.get(appId);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getAllApps() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['apps'], 'readonly');
+                const store = transaction.objectStore('apps');
+                const request = store.getAll();
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function storeFile(fileData) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['files'], 'readwrite');
+                const store = transaction.objectStore('files');
+                const request = store.add(fileData);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getFile(fileId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['files'], 'readonly');
+                const store = transaction.objectStore('files');
+                const request = store.get(fileId);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
         // App manifest - loaded from packed directory
         const apps = [
             {
@@ -229,7 +2305,8 @@
                 icon: '🏓',
                 description: 'Real-time multiplayer Pong game with 2-player support, lives system, and optimized network sync.',
                 url: '../apps/com.baracuda.spixi.pong/app/index.html',
-                zip: '../packed/pong.zip'
+                zip: '../packed/pong.zip',
+                devMode: false
             },
             {
                 name: 'Tic Tac Toe',
@@ -238,7 +2315,8 @@
                 icon: '⭕',
                 description: 'Classic Tic Tac Toe game for 2 players with real-time multiplayer gameplay.',
                 url: '../apps/com.ixilabs.spixi.tictactoe/app/index.html',
-                zip: '../packed/tic-tac-toe.zip'
+                zip: '../packed/tic-tac-toe.zip',
+                devMode: false
             },
             {
                 name: 'Whiteboard',
@@ -247,7 +2325,8 @@
                 icon: '🎨',
                 description: 'Real-time collaborative drawing app. Sketch and share with another user.',
                 url: '../apps/com.ixilabs.spixi.whiteboard/app/index.html',
-                zip: '../packed/whiteboard.zip'
+                zip: '../packed/whiteboard.zip',
+                devMode: false
             },
             {
                 name: 'Video Test',
@@ -256,7 +2335,8 @@
                 icon: '📹',
                 description: 'Test video capabilities and media device access.',
                 url: '../apps/com.ixilabs.spixi.video-test/app/index.html',
-                zip: '../packed/video-test.zip'
+                zip: '../packed/video-test.zip',
+                devMode: false
             },
             {
                 name: 'Gate Control',
@@ -265,7 +2345,8 @@
                 icon: '🚪',
                 description: 'Smart gate/door control interface for IoT integration.',
                 url: '../apps/com.ixilabs.spixi.gate-control/app/index.html',
-                zip: '../packed/gate-control.zip'
+                zip: '../packed/gate-control.zip',
+                devMode: false
             },
             {
                 name: 'Auth Test',
@@ -274,7 +2355,8 @@
                 icon: '🔐',
                 description: 'Authentication and QR code scanning test app.',
                 url: '../apps/com.ixilabs.spixi.auth/app/index.html',
-                zip: '../packed/auth.zip'
+                zip: '../packed/auth.zip',
+                devMode: false
             },
             {
                 name: 'Mini Apps Test',
@@ -283,7 +2365,8 @@
                 icon: '🧪',
                 description: 'SDK testing utility for storage, network, and lifecycle operations.',
                 url: '../apps/com.ixilabs.spixi.mini-apps-test/app/index.html',
-                zip: '../packed/mini-apps-test.zip'
+                zip: '../packed/mini-apps-test.zip',
+                devMode: false
             },
             {
                 name: 'AI Assistant',
@@ -292,35 +2375,264 @@
                 icon: '🤖',
                 description: 'AI-powered assistant with syntax highlighting and code execution.',
                 url: '../apps/com.mostnonameuser.spixi.aiassistant/app/index.html',
-                zip: '../packed/aiassistant.zip'
+                zip: '../packed/aiassistant.zip',
+                devMode: false
             }
         ];
 
+        // App manifest - loaded from packed directory and database
+        let allApps = [...apps]; // Start with built-in apps
+
+        async function loadAndRenderApps() {
+            // For now, just render built-in apps; DB/uploaded apps are optional
+            allApps = [...apps];
+            renderApps();
+        }
+
         function renderApps() {
             const grid = document.getElementById('appsGrid');
-            grid.innerHTML = apps.map((app, index) => `
+            if (!grid) {
+                console.error('appsGrid element not found!');
+                return;
+            }
+            grid.innerHTML = allApps.map((app, index) => `
                 <div class="app-card">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <div class="app-icon">${app.icon}</div>
                         <div>
                             <div class="app-name">${app.name}</div>
                             <div class="app-version">v${app.version}</div>
+                            ${app.uploaded ? `<div style="font-size: 0.75rem; color: #10b981;">📤 Uploaded</div>` : ''}
+                            ${app.devMode ? `<div style="font-size: 0.75rem; color: #6366f1;">🔧 Dev Mode</div>` : ''}
                         </div>
                     </div>
                     <div class="app-id">${app.id}</div>
                     <div class="app-description">${app.description}</div>
+                    
+                    <!-- Dev Mode Toggle -->
+                    <div class="app-dev-mode-container">
+                        <label class="app-dev-mode-label">
+                            <span>🔧 Dev Mode</span>
+                        </label>
+                        <div class="toggle-switch ${app.devMode ? 'enabled' : ''}" 
+                             onclick="toggleAppDevMode('${app.id}', ${!app.devMode})">
+                            <div class="toggle-switch-thumb"></div>
+                        </div>
+                    </div>
+                    
                     <div class="button-group">
-                        <a href="${app.url}" target="_blank" class="btn btn-primary">
+                        <button class="btn btn-primary" onclick="openApp('${app.id}')">
                             <span>🌐</span>
                             <span>View App</span>
-                        </a>
+                        </button>
                         <button class="btn btn-secondary" onclick="downloadApp('${app.name}', '${app.zip}')">
                             <span>💾</span>
                             <span>Extract</span>
                         </button>
+                        ${app.uploaded ? `<button class="btn btn-secondary" onclick="deleteUploadedApp('${app.id}', '${app.name}')">
+                            <span>🗑️</span>
+                            <span>Delete</span>
+                        </button>` : ''}
                     </div>
                 </div>
             `).join('');
+        }
+
+        async function toggleAppDevMode(appId, enabled) {
+            try {
+                // Update in memory
+                const app = allApps.find(a => a.id === appId);
+                if (!app) return;
+
+                app.devMode = enabled;
+
+                // If it's an uploaded app, save to database
+                if (app.uploaded) {
+                    const existingApp = await getApp(appId);
+                    if (existingApp) {
+                        existingApp.devMode = enabled;
+                        await updateAppDevMode(appId, enabled);
+                    }
+                } else {
+                    // For built-in apps, save to localStorage
+                    const builtInDevModes = JSON.parse(localStorage.getItem('builtInAppDevModes') || '{}');
+                    builtInDevModes[appId] = enabled;
+                    localStorage.setItem('builtInAppDevModes', JSON.stringify(builtInDevModes));
+                }
+
+                // Re-render to show updated state
+                renderApps();
+
+                console.log(`Dev mode ${enabled ? 'enabled' : 'disabled'} for ${appId}`);
+            } catch (error) {
+                console.error('Error toggling dev mode:', error);
+            }
+        }
+
+        async function updateAppDevMode(appId, enabled) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['apps'], 'readwrite');
+                const store = transaction.objectStore('apps');
+                const getRequest = store.get(appId);
+
+                getRequest.onsuccess = () => {
+                    const app = getRequest.result;
+                    if (app) {
+                        app.devMode = enabled;
+                        const updateRequest = store.put(app);
+                        updateRequest.onsuccess = () => resolve(app);
+                        updateRequest.onerror = () => reject(updateRequest.error);
+                    }
+                };
+                getRequest.onerror = () => reject(getRequest.error);
+            });
+        }
+
+        async function loadAppDevModes() {
+            try {
+                // Load built-in app dev modes from localStorage
+                const builtInDevModes = JSON.parse(localStorage.getItem('builtInAppDevModes') || '{}');
+
+                // Apply to built-in apps
+                apps.forEach(app => {
+                    app.devMode = builtInDevModes[app.id] || false;
+                });
+
+                // Load dev modes from database for uploaded apps
+                if (db) {
+                    const uploadedApps = await getAllApps();
+                    uploadedApps.forEach(app => {
+                        const appInList = allApps.find(a => a.id === app.id);
+                        if (appInList) {
+                            appInList.devMode = app.devMode || false;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading app dev modes:', error);
+            }
+        }
+
+        function getAppUrl(app) {
+            // Return the appropriate URL based on dev mode status
+            if (app.devMode && devServerRunning) {
+                // If dev mode is enabled and server is running, use dev server URL
+                return `http://localhost:${devServerConfig.httpPort}?app=${encodeURIComponent(app.id)}`;
+            } else {
+                // Otherwise use the default URL
+                return app.url;
+            }
+        }
+
+        function openApp(appId) {
+            // Find the app
+            const app = allApps.find(a => a.id === appId);
+            if (!app) {
+                alert('App not found');
+                return;
+            }
+
+            const url = getAppUrl(app);
+
+            if (url === '#') {
+                alert('This app cannot be opened directly from here');
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+
+        async function downloadUploadedApp(appId, appName) {
+            try {
+                // Get app metadata
+                const app = await getApp(appId);
+                if (!app || !app.files || app.files.length === 0) {
+                    throw new Error('App files not found');
+                }
+
+                // Find the ZIP file
+                const zipFile = app.files.find(f => f.filename.endsWith('.zip'));
+                if (!zipFile) {
+                    throw new Error('ZIP file not found for this app');
+                }
+
+                // Get the file data
+                const fileRecord = await getFile(zipFile.id);
+                if (!fileRecord) {
+                    throw new Error('File data not found');
+                }
+
+                // Create blob and download
+                const blob = new Blob([fileRecord.data], { type: 'application/zip' });
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${appName.toLowerCase().replace(/\s+/g, '-')}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Error downloading uploaded app:', error);
+                alert(`Error downloading app: ${error.message}`);
+            }
+        }
+
+        async function deleteUploadedApp(appId, appName) {
+            if (!confirm(`Are you sure you want to delete "${appName}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                // Get app metadata
+                const app = await getApp(appId);
+                if (!app) {
+                    throw new Error('App not found');
+                }
+
+                // Delete all associated files
+                for (const file of app.files) {
+                    await deleteFile(file.id);
+                }
+
+                // Delete app metadata
+                await deleteApp(appId);
+
+                // Refresh the app list
+                await loadAndRenderApps();
+
+                showStatus(`✅ App "${appName}" deleted successfully!`, 'success');
+                setTimeout(() => {
+                    uploadStatus.style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error deleting app:', error);
+                showStatus(`❌ Delete failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteApp(appId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['apps'], 'readwrite');
+                const store = transaction.objectStore('apps');
+                const request = store.delete(appId);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function deleteFile(fileId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['files'], 'readwrite');
+                const store = transaction.objectStore('files');
+                const request = store.delete(fileId);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
         }
 
         function downloadApp(name, zipPath) {
@@ -333,7 +2645,9 @@
         }
 
         // Render apps on page load
-        document.addEventListener('DOMContentLoaded', renderApps);
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAndRenderApps();
+        });
     </script>
 </body>
 </html>
