@@ -158,13 +158,15 @@ const mainServer = http.createServer((req, res) => {
 
     // Remove query string from URL
     let urlPath = req.url.split('?')[0];
-    
-    // Set default path
+
+    // Set default path (use relative paths to avoid absolute path join issues on Windows)
     let filePath = urlPath === '/' ? '/index.html' : urlPath;
+    // Strip leading slash so path.join(__dirname, ...) doesn't treat it as absolute
+    filePath = filePath.replace(/^(\/|\\)/, '');
     
     // If requesting an app resource, serve from apps directory
-    if (filePath.includes('/apps/')) {
-        filePath = path.join(__dirname, '..', filePath);
+    if (filePath.startsWith('apps/')) {
+        filePath = path.join(__dirname, filePath);
     } else {
         filePath = path.join(__dirname, filePath);
     }
@@ -348,7 +350,7 @@ const devServer = http.createServer((req, res) => {
 
     // If requesting root with ?app parameter, serve app's index.html
     if (pathname === '/' && appId) {
-        const appsDir = path.join(__dirname, '..', 'apps');
+        const appsDir = path.join(__dirname, 'apps');
         const appPath = path.join(appsDir, appId, 'app', 'index.html');
 
         console.log(`[${new Date().toISOString()}] DEV Serving app ${appId} from: ${appPath}`);
@@ -376,7 +378,7 @@ const devServer = http.createServer((req, res) => {
 
     // If requesting a resource path with ?app parameter, serve from app directory
     if (appId && pathname && pathname !== '/') {
-        const appsDir = path.join(__dirname, '..', 'apps');
+        const appsDir = path.join(__dirname, 'apps');
         const resourcePath = path.join(appsDir, appId, 'app', pathname);
 
         console.log(`[${new Date().toISOString()}] DEV Serving resource: ${resourcePath}`);
