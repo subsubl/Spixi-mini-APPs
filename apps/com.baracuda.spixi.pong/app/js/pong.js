@@ -762,6 +762,12 @@ function gameLoop(timestamp) {
         }
 
         frameCounter++;
+
+        // Debug logging every 60 frames (1 second)
+        if (frameCounter % 60 === 0) {
+            console.log(`GameLoop alive: frame=${frameCounter}, ball=(${gameState.ball.x.toFixed(1)},${gameState.ball.y.toFixed(1)}), v=(${gameState.ball.vx.toFixed(2)},${gameState.ball.vy.toFixed(2)}), auth=${gameState.hasActiveBallAuthority}, owner=${gameState.isBallOwner}`);
+        }
+
         updatePaddle();
 
         // Update remote paddle with entity interpolation
@@ -810,8 +816,9 @@ function gameLoop(timestamp) {
         }
     } catch (e) {
         console.error("Error in game loop:", e);
-        // Don't stop the loop, try to recover next frame
-        if (!gameLoopId && !gameState.gameEnded) {
+        // Force restart the loop even if ID exists (it might be stale/broken)
+        if (!gameState.gameEnded) {
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
             gameLoopId = requestAnimationFrame(gameLoop);
         }
     }
@@ -914,60 +921,59 @@ function updateBall() {
  * 2. Gently correcting towards the authoritative target from server
  */
 function updateBallInterpolation() {
-    // 1. Simulate the LOCAL ball (Client-side prediction)
-    // First, extrapolate position using current velocity (like local simulation)
-    // This gives us smooth 60fps motion between network updates
-    gameState.ball.x += gameState.ball.vx;
-    gameState.ball.y += gameState.ball.vy;
+    try {
+        // Safety check: Prevent NaN propagation
+        if (isNaN(gameState.ball.x) || isNaN(gameState.ball.y) || isNaN(gameState.ball.vx) || isNaN(gameState.ball.vy)) {
+            console.warn("NaN detected in ball state, resetting");
+            gameState.ball.x = CANVAS_WIDTH / 2;
+            gameState.ball.y = CANVAS_HEIGHT / 2;
+            gameState.ball.vx = 0;
+            gameState.ball.vy = 0;
+            return;
+        }
 
-    // Handle wall bounces locally for smooth response
-    if (gameState.ball.y <= BALL_SIZE / 2 || gameState.ball.y >= CANVAS_HEIGHT - BALL_SIZE / 2) {
-        gameState.ball.vy = -gameState.ball.vy;
-        gameState.ball.y = Math.max(BALL_SIZE / 2, Math.min(CANVAS_HEIGHT - BALL_SIZE / 2, gameState.ball.y));
-        playWallBounceSound();
-    }
+        // 1. Simulate the LOCAL ball (Client-side prediction)
+        // First, extrapolate position using current velocity (like local simulation)
+        // This gives us smooth 60fps motion between network updates
+        gameState.ball.x += gameState.ball.vx;
+        gameState.ball.y += gameState.ball.vy;
 
-    // 2. Correct drift towards authoritative target
-    // Since we are now receiving frequent updates again, we can just lerp towards the target
+        // Handle wall bounces locally for smooth response
+        if (gameState.ball.y <= BALL_SIZE / 2 || gameState.ball.y >= CANVAS_HEIGHT - BALL_SIZE / 2) {
+            gameState.ball.vy = -gameState.ball.vy;
+            gameState.ball.y = Math.max(BALL_SIZE / 2, Math.min(CANVAS_HEIGHT - BALL_SIZE / 2, gameState.ball.y));
+            playWallBounceSound();
+        }
 
-    const distanceToTarget = Math.sqrt(
-        Math.pow(gameState.ball.x - ballTarget.x, 2) +
-        Math.pow(gameState.ball.y - ballTarget.y, 2)
-    );
+        // 2. Correct drift towards authoritative target
+        // Ensure ballTarget is valid
+        if (!ballTarget || isNaN(ballTarget.x) || isNaN(ballTarget.y)) {
+            return;
+        }
 
-    // Dynamic correction:
-    // - Large error (>50px): Snap immediately (something went wrong/lag spike)
-    // - Medium error (>10px): Fast correction (20% per frame)
-    // - Small error (>1px): Gentle correction (5% per frame)
+        const distanceToTarget = Math.sqrt(
+            Math.pow(gameState.ball.x - ballTarget.x, 2) +
+            Math.pow(gameState.ball.y - ballTarget.y, 2)
+        );
 
-    if (distanceToTarget > 50) {
-        // Snap to target if very far (indicates major correction/lag spike)
-        gameState.ball.x = ballTarget.x;
-        gameState.ball.y = ballTarget.y;
-        gameState.ball.vx = ballTarget.vx;
-        gameState.ball.vy = ballTarget.vy;
-    } else if (distanceToTarget > 1) {
-        // Apply dynamic position correction
-        const correctionFactor = distanceToTarget > 10 ? 0.2 : 0.05;
+        // Simple Lerp - Reverted complex logic to fix invisible ball
+        if (distanceToTarget > 50) {
+            // Snap if very far
+            gameState.ball.x = ballTarget.x;
+            gameState.ball.y = ballTarget.y;
+            gameState.ball.vx = ballTarget.vx;
+            gameState.ball.vy = ballTarget.vy;
+        } else {
+            // Standard smooth correction
+            gameState.ball.x += (ballTarget.x - gameState.ball.x) * BALL_LERP_FACTOR;
+            gameState.ball.y += (ballTarget.y - gameState.ball.y) * BALL_LERP_FACTOR;
 
-        gameState.ball.x += (ballTarget.x - gameState.ball.x) * correctionFactor;
-        gameState.ball.y += (ballTarget.y - gameState.ball.y) * correctionFactor;
-    }
-
-    // Check if velocity changed significantly (indicates bounce/collision)
-    const velocityDiff = Math.sqrt(
-        Math.pow(gameState.ball.vx - ballTarget.vx, 2) +
-        Math.pow(gameState.ball.vy - ballTarget.vy, 2)
-    );
-
-    // Snap velocity on significant change (bounce detected by server)
-    if (velocityDiff > 1.0) {
-        gameState.ball.vx = ballTarget.vx;
-        gameState.ball.vy = ballTarget.vy;
-    } else if (velocityDiff > 0.1) {
-        // Small velocity drift - correct gently
-        gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * 0.1;
-        gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * 0.1;
+            // Velocity correction
+            gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * BALL_LERP_FACTOR;
+            gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * BALL_LERP_FACTOR;
+        }
+    } catch (e) {
+        console.error("Error in updateBallInterpolation:", e);
     }
 }
 
@@ -1223,82 +1229,86 @@ function updateLivesDisplay() {
 }
 
 function render() {
-    if (!ctx || !canvas) return;
+    try {
+        if (!ctx || !canvas) return;
 
-    // Clear canvas
-    ctx.fillStyle = '#1a202c';
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        // Clear canvas
+        ctx.fillStyle = '#1a202c';
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Draw center line
-    ctx.strokeStyle = '#4a5568';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([10, 10]);
-    ctx.beginPath();
-    ctx.moveTo(CANVAS_WIDTH / 2, 0);
-    ctx.lineTo(CANVAS_WIDTH / 2, CANVAS_HEIGHT);
-    ctx.stroke();
-    ctx.setLineDash([]);
+        // Draw center line
+        ctx.strokeStyle = '#4a5568';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 10]);
+        ctx.beginPath();
+        ctx.moveTo(CANVAS_WIDTH / 2, 0);
+        ctx.lineTo(CANVAS_WIDTH / 2, CANVAS_HEIGHT);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-    // Draw connection quality indicator (top right)
-    if (connectionEstablished && gameState.gameStarted) {
-        ctx.save();
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'right';
+        // Draw connection quality indicator (top right)
+        if (connectionEstablished && gameState.gameStarted) {
+            ctx.save();
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
 
-        // Color based on quality
-        if (connectionQuality === 'good') {
-            ctx.fillStyle = '#48bb78'; // green
-        } else if (connectionQuality === 'fair') {
-            ctx.fillStyle = '#ed8936'; // orange
-        } else {
-            ctx.fillStyle = '#f56565'; // red
+            // Color based on quality
+            if (connectionQuality === 'good') {
+                ctx.fillStyle = '#48bb78'; // green
+            } else if (connectionQuality === 'fair') {
+                ctx.fillStyle = '#ed8936'; // orange
+            } else {
+                ctx.fillStyle = '#f56565'; // red
+            }
+
+            // Draw indicator dot and text
+            ctx.fillRect(CANVAS_WIDTH - 15, 10, 8, 8);
+            ctx.fillText(`${currentPacketRate} pps`, CANVAS_WIDTH - 25, 16);
+            ctx.restore();
         }
 
-        // Draw indicator dot and text
-        ctx.fillRect(CANVAS_WIDTH - 15, 10, 8, 8);
-        ctx.fillText(`${currentPacketRate} pps`, CANVAS_WIDTH - 25, 16);
-        ctx.restore();
-    }
+        // Draw paddles - ball owner always on right side
+        // If I own ball: I'm on right (red), opponent on left (blue)
+        // If opponent owns ball: opponent on right (red), I'm on left (blue)
 
-    // Draw paddles - ball owner always on right side
-    // If I own ball: I'm on right (red), opponent on left (blue)
-    // If opponent owns ball: opponent on right (red), I'm on left (blue)
+        let rightPaddleY, leftPaddleY, rightPaddleColor, leftPaddleColor;
 
-    let rightPaddleY, leftPaddleY, rightPaddleColor, leftPaddleColor;
+        if (gameState.isBallOwner) {
+            // I own ball - I'm on right (red)
+            rightPaddleY = gameState.localPaddle.y;
+            leftPaddleY = gameState.remotePaddle.y;
+            rightPaddleColor = '#f56565'; // Red for ball owner
+            leftPaddleColor = '#4299e1';  // Blue for non-owner
+        } else {
+            // Opponent owns ball - opponent on right (red)
+            rightPaddleY = gameState.remotePaddle.y;
+            leftPaddleY = gameState.localPaddle.y;
+            rightPaddleColor = '#f56565'; // Red for ball owner
+            leftPaddleColor = '#4299e1';  // Blue for non-owner
+        }
 
-    if (gameState.isBallOwner) {
-        // I own ball - I'm on right (red)
-        rightPaddleY = gameState.localPaddle.y;
-        leftPaddleY = gameState.remotePaddle.y;
-        rightPaddleColor = '#f56565'; // Red for ball owner
-        leftPaddleColor = '#4299e1';  // Blue for non-owner
-    } else {
-        // Opponent owns ball - opponent on right (red)
-        rightPaddleY = gameState.remotePaddle.y;
-        leftPaddleY = gameState.localPaddle.y;
-        rightPaddleColor = '#f56565'; // Red for ball owner
-        leftPaddleColor = '#4299e1';  // Blue for non-owner
-    }
+        const rightPaddleX = CANVAS_WIDTH - 20 - PADDLE_WIDTH;
+        const leftPaddleX = 20;
 
-    const rightPaddleX = CANVAS_WIDTH - 20 - PADDLE_WIDTH;
-    const leftPaddleX = 20;
+        // Draw right paddle (ball owner)
+        ctx.fillStyle = rightPaddleColor;
+        ctx.fillRect(rightPaddleX, rightPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
 
-    // Draw right paddle (ball owner)
-    ctx.fillStyle = rightPaddleColor;
-    ctx.fillRect(rightPaddleX, rightPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
+        // Draw left paddle (non-owner)
+        ctx.fillStyle = leftPaddleColor;
+        ctx.fillRect(leftPaddleX, leftPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
 
-    // Draw left paddle (non-owner)
-    ctx.fillStyle = leftPaddleColor;
-    ctx.fillRect(leftPaddleX, leftPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
-
-    // Draw ball - only if it has velocity OR we have authority (waiting to serve)
-    // Lower threshold to 0.01 to ensure ball is visible even at very low speeds
-    const ballVisible = (Math.abs(gameState.ball.vx) > 0.01 || Math.abs(gameState.ball.vy) > 0.01) || gameState.hasActiveBallAuthority;
-    if (ballVisible) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(gameState.ball.x, gameState.ball.y, BALL_SIZE / 2, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw ball - only if it has velocity OR we have authority (waiting to serve)
+        // Lower threshold to 0.01 to ensure ball is visible even at very low speeds
+        const ballVisible = (Math.abs(gameState.ball.vx) > 0.01 || Math.abs(gameState.ball.vy) > 0.01) || gameState.hasActiveBallAuthority;
+        if (ballVisible) {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(gameState.ball.x, gameState.ball.y, BALL_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    } catch (e) {
+        console.error("Error in render:", e);
     }
 }
 
@@ -1665,19 +1675,9 @@ function sendGameState() {
 
             const newBallState = reusableBallState;
 
-            // Only include if changed significantly (position differs by >2px or velocity changed)
-            // This is a bandwidth optimization, but much less aggressive than "event-only"
-            const ballStateChanged = !lastSentBallState ||
-                Math.abs(lastSentBallState.x - newBallState.x) > 2 ||
-                Math.abs(lastSentBallState.y - newBallState.y) > 2 ||
-                lastSentBallState.vx !== newBallState.vx ||
-                lastSentBallState.vy !== newBallState.vy;
-
-            if (ballStateChanged) {
-                // Need to clone for lastSentBallState since we reuse the object
-                lastSentBallState = { ...newBallState };
-                state.b = newBallState;
-            }
+            // Always send ball state if active - Reverted optimization to fix invisible ball
+            lastSentBallState = { ...newBallState };
+            state.b = newBallState;
         } else if (!ballActive) {
             // Ball stopped - clear cached state
             lastSentBallState = null;
@@ -1982,24 +1982,38 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                     document.getElementById('status-text').textContent = 'Game On!';
 
                     // Process ball velocity from launch message
+                    // Process ball velocity from launch message
                     if (msg.b) {
-                        const mirroredX = CANVAS_WIDTH - msg.b.x;
-                        const mirroredVx = -msg.b.vx / 100; // Convert integer to decimal
-                        const vy = msg.b.vy / 100;
+                        console.log("Received launch packet:", JSON.stringify(msg.b));
+
+                        // Validate and sanitize input to prevent NaN propagation
+                        const rawX = Number(msg.b.x);
+                        const rawY = Number(msg.b.y);
+                        const rawVx = Number(msg.b.vx);
+                        const rawVy = Number(msg.b.vy);
+
+                        const mirroredX = CANVAS_WIDTH - (isNaN(rawX) ? 0 : rawX);
+                        const mirroredVx = -(isNaN(rawVx) ? 0 : rawVx) / 100; // Convert integer to decimal
+                        const vy = (isNaN(rawVy) ? 0 : rawVy) / 100;
+                        const y = isNaN(rawY) ? CANVAS_HEIGHT / 2 : rawY;
+
+                        console.log(`Launch processed: x=${mirroredX}, y=${y}, vx=${mirroredVx}, vy=${vy}`);
 
                         // Set as interpolation target
                         ballTarget.x = mirroredX;
-                        ballTarget.y = msg.b.y;
+                        ballTarget.y = y;
                         ballTarget.vx = mirroredVx;
                         ballTarget.vy = vy;
 
                         gameState.ball.x = mirroredX;
-                        gameState.ball.y = msg.b.y;
+                        gameState.ball.y = y;
                         gameState.ball.vx = mirroredVx;
                         gameState.ball.vy = vy;
 
-                        // Ball owner has authority when launching
+                        // Ensure ball authority is correct (receiver does NOT have authority initially)
                         gameState.hasActiveBallAuthority = false;
+                    } else {
+                        console.warn("Launch packet missing ball data");
                     }
                 }
                 break;
@@ -2025,13 +2039,18 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
 
                 // Perform server reconciliation: sync our predicted state with remote's authoritative view
                 // When remote sends paddle position + last ack sequence, we replay our pending inputs
+                // FIXME: This is incorrect for P2P where each player is authoritative over their own paddle.
+                // msg.p is the REMOTE player's position, not our position echoed back.
+                // Calling this forces our paddle to sync to the opponent's position!
+                /*
                 if (msg.p !== undefined && msg.lastAck !== undefined) {
                     reconcilePaddleState(msg.p, msg.lastAck);
                 }
+                */
 
                 // Update remote paddle target for smooth interpolation
                 if (msg.p !== undefined) {
-                    remotePaddleTarget = msg.p;
+                    remotePaddleTarget = Number(msg.p); // Ensure number
                 }
 
                 // Update ball state when receiving data
