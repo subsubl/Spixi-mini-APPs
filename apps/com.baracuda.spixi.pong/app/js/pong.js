@@ -127,7 +127,7 @@ const MAX_LIVES = 3;
 const FRAME_RATE = 60; // Render at 60fps
 // Dynamic network rate variables
 let currentNetworkRate = 33; // Start at 30fps (33ms)
-const NETWORK_RATE_ACTIVE = 40; // 25fps when active (optimized from 30fps)
+const NETWORK_RATE_ACTIVE = 100; // 10fps baseline (hybrid rate)
 const NETWORK_RATE_IDLE = 100; // 10fps when idle
 const NETWORK_RATE_THROTTLED = 66; // 15fps when performance is poor
 
@@ -1675,7 +1675,18 @@ function sendGameState() {
 
             const newBallState = reusableBallState;
 
+            // Check for significant velocity change (bounce/hit) to force update
+            // This allows us to run at 10pps baseline but react instantly to events
+            const velocityChanged = !lastSentBallState ||
+                Math.abs(lastSentBallState.vx - newBallState.vx) > 5 || // > 0.05 float diff
+                Math.abs(lastSentBallState.vy - newBallState.vy) > 5;
+
             // Always send ball state if active - Reverted optimization to fix invisible ball
+            // BUT: If velocity changed, we update lastSyncTime to prevent "double send" and ensure smooth spacing
+            if (velocityChanged) {
+                lastSyncTime = currentTime; // Reset timer so we don't send again immediately
+            }
+
             lastSentBallState = { ...newBallState };
             state.b = newBallState;
         } else if (!ballActive) {
