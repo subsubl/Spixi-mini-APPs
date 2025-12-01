@@ -837,12 +837,13 @@ function gameLoop(timestamp) {
         // Update remote paddle with entity interpolation
         updateRemotePaddleInterpolation();
 
-        // Only player with ball authority simulates ball movement locally
-        const ballHasVelocity = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
+        // Ball movement: Authority determines simulation vs interpolation
+        // Server (ball owner) simulates, client interpolates
+        if (gameState.hasActiveBallAuthority) {
+            // We have authority - simulate ball physics locally
+            const ballHasVelocity = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
 
-        if (ballHasVelocity) {
-            // Simulate ball if we have authority, otherwise interpolate toward target
-            if (gameState.hasActiveBallAuthority) {
+            if (ballHasVelocity) {
                 updateBall();
                 checkCollisions();
 
@@ -850,21 +851,22 @@ function gameLoop(timestamp) {
                 if (gameState.isBallOwner) {
                     checkScore();
                 }
-            } else {
-                // We don't have authority - interpolate toward target for smooth motion
-                updateBallInterpolation();
+            } else if (gameState.waitingForServe) {
+                // Ball waiting for serve - keep attached to serving paddle
+                if (gameState.isBallOwner) {
+                    // Ball owner on right
+                    gameState.ball.x = CANVAS_WIDTH - 20 - PADDLE_WIDTH - BALL_SIZE;
+                    gameState.ball.y = gameState.localPaddle.y + PADDLE_HEIGHT / 2;
+                } else {
+                    // Non-owner on left
+                    gameState.ball.x = 20 + PADDLE_WIDTH + BALL_SIZE;
+                    gameState.ball.y = gameState.localPaddle.y + PADDLE_HEIGHT / 2;
+                }
             }
-        } else if (gameState.waitingForServe || gameState.hasActiveBallAuthority) {
-            // Ball waiting for serve - keep attached to serving paddle
-            if (gameState.isBallOwner) {
-                // Ball owner on right
-                gameState.ball.x = CANVAS_WIDTH - 20 - PADDLE_WIDTH - BALL_SIZE;
-                gameState.ball.y = gameState.localPaddle.y + PADDLE_HEIGHT / 2;
-            } else {
-                // Non-owner on left
-                gameState.ball.x = 20 + PADDLE_WIDTH + BALL_SIZE;
-                gameState.ball.y = gameState.localPaddle.y + PADDLE_HEIGHT / 2;
-            }
+        } else {
+            // We don't have authority - ALWAYS interpolate toward target
+            // This ensures smooth client-side ball movement even if local velocity is 0
+            updateBallInterpolation();
         }
 
         render();
