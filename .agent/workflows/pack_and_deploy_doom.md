@@ -11,7 +11,7 @@ node pack-app.js apps/com.baracuda.spixi.doom packed
 git add .
 
 3. Commit changes
-git commit -m "Update DOOM app and pack"
+git commit -m "Implement analog joystick and update exit button for DOOM"
 
 4. Push to main
 // turbo
