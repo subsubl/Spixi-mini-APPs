@@ -1014,7 +1014,7 @@ function updateBallInterpolation() {
             playWallBounceSound();
         }
 
-        // 2. Correct drift towards authoritative target
+        // 2. Correct drift towards authoritative target using improved interpolation
         // Ensure ballTarget is valid
         if (!ballTarget || isNaN(ballTarget.x) || isNaN(ballTarget.y)) {
             return;
@@ -1025,21 +1025,25 @@ function updateBallInterpolation() {
             Math.pow(gameState.ball.y - ballTarget.y, 2)
         );
 
-        // Simple Lerp - Reverted complex logic to fix invisible ball
+        // Improved interpolation for smooth 60fps rendering with 10pps updates
+        // Use dynamic lerp factor based on distance
         if (distanceToTarget > 50) {
-            // Snap if very far
+            // Snap if very far (> 50px) - likely a teleport or major correction
             gameState.ball.x = ballTarget.x;
             gameState.ball.y = ballTarget.y;
             gameState.ball.vx = ballTarget.vx;
             gameState.ball.vy = ballTarget.vy;
         } else {
-            // Standard smooth correction
-            gameState.ball.x += (ballTarget.x - gameState.ball.x) * BALL_LERP_FACTOR;
-            gameState.ball.y += (ballTarget.y - gameState.ball.y) * BALL_LERP_FACTOR;
+            // Smooth interpolation with adaptive correction strength
+            // Stronger correction for larger distances, gentler for small drifts
+            const adaptiveLerpFactor = Math.min(0.3, BALL_LERP_FACTOR + (distanceToTarget / 200));
 
-            // Velocity correction
-            gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * BALL_LERP_FACTOR;
-            gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * BALL_LERP_FACTOR;
+            gameState.ball.x += (ballTarget.x - gameState.ball.x) * adaptiveLerpFactor;
+            gameState.ball.y += (ballTarget.y - gameState.ball.y) * adaptiveLerpFactor;
+
+            // Velocity correction - more aggressive to match target trajectory
+            gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * 0.2;
+            gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * 0.2;
         }
     } catch (e) {
         console.error("Error in updateBallInterpolation:", e);
@@ -1860,11 +1864,11 @@ function sendGameState() {
                 Math.abs(lastSentBallState.vx - newBallState.vx) > 5 || // > 0.05 float diff
                 Math.abs(lastSentBallState.vy - newBallState.vy) > 5;
 
-            // Adaptive ball update rate based on connection quality
-            // Good connection: 60pps (~16ms) | Poor/Fair connection: 25pps (40ms)
-            const ballUpdateInterval = (connectionQuality === 'good') ? 16 : 40;
+            // Conservative ball update rate: 10pps (100ms) to stay under observed 15pps
+            // Client-side interpolation handles smoothness between updates
+            const ballUpdateInterval = 100; // 10pps
 
-            // Send ball at adaptive rate OR on velocity change (event)
+            // Send ball at 10pps OR on velocity change (event)
             const timeSinceLastBallUpdate = currentTime - (lastBallUpdateTime || 0);
             if (timeSinceLastBallUpdate >= ballUpdateInterval || velocityChanged) {
                 lastSentBallState = { ...newBallState };
