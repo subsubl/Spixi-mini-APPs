@@ -125,7 +125,7 @@ const BALL_SPEED_INITIAL = 7;
 const BALL_SPEED_INCREMENT = 0.4;
 const MAX_LIVES = 3;
 const FRAME_RATE = 60; // Render at 60fps
-const NETWORK_SEND_RATE = 50; // Send network updates at 20fps (50ms)
+const NETWORK_SEND_RATE = 33; // Send network updates at 30fps (33ms)
 
 // Sound system
 let audioContext;
@@ -875,16 +875,23 @@ function updateBallInterpolation() {
         Math.pow(gameState.ball.y - ballTarget.y, 2)
     );
     
-    // Snap to target if very far (>150px indicates major correction needed)
-    if (distanceToTarget > 150) {
+    // Dynamic correction:
+    // - Large error (>50px): Snap immediately (something went wrong/lag spike)
+    // - Medium error (>10px): Fast correction (20% per frame)
+    // - Small error (>1px): Gentle correction (5% per frame)
+    // - Tiny error: Ignore to prevent micro-jitter
+    
+    if (distanceToTarget > 50) {
+        // Snap to target if very far (indicates major correction/lag spike)
         gameState.ball.x = ballTarget.x;
         gameState.ball.y = ballTarget.y;
         gameState.ball.vx = ballTarget.vx;
         gameState.ball.vy = ballTarget.vy;
-    } else if (distanceToTarget > 5) {
-        // Apply gentle position correction (10% per frame)
-        // This fixes drift without causing visible jumps
-        const correctionFactor = 0.1;
+    } else if (distanceToTarget > 1) {
+        // Apply dynamic position correction
+        // Closer = gentler, Further = faster
+        const correctionFactor = distanceToTarget > 10 ? 0.2 : 0.05;
+        
         gameState.ball.x += (ballTarget.x - gameState.ball.x) * correctionFactor;
         gameState.ball.y += (ballTarget.y - gameState.ball.y) * correctionFactor;
     }
@@ -901,8 +908,8 @@ function updateBallInterpolation() {
         gameState.ball.vy = ballTarget.vy;
     } else if (velocityDiff > 0.1) {
         // Small velocity drift - correct gently
-        gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * 0.15;
-        gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * 0.15;
+        gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * 0.1;
+        gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * 0.1;
     }
 }
 

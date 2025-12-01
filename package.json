@@ -23,10 +23,9 @@
   "dependencies": {
     "jszip": "^3.10.1",
     "mqtt": "^5.14.1"
-  }
-  ,
+  },
   "devDependencies": {
-    "mocha": "^10.2.0",
-    "chai": "^4.3.7"
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0"
   }
 }
