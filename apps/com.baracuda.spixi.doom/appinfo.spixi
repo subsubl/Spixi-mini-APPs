@@ -1,0 +1,7 @@
+caVersion = 0
+id = com.baracuda.spixi.doom
+publisher = Baracuda
+name = DOOM
+version=1.0.0
+capabilities = multiUser
+maxUsers = 4

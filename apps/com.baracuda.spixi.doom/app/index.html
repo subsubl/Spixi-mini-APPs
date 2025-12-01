@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOOM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            color: #0f0;
+        }
+        
+        #canvas {
+            border: 2px solid #0f0;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+            max-width: 100%;
+            height: auto;
+        }
+        
+        #status {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        #controls {
+            margin-top: 10px;
+            font-size: 12px;
+            text-align: center;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="640" height="400"></canvas>
+    <div id="status">Loading DOOM...</div>
+    <div id="controls">
+        Arrow Keys: Move | Ctrl: Fire | Space: Use | ESC: Menu
+    </div>
+
+    <script>
+        // Spixi SDK initialization
+        window.SpixiAppSdk = window.SpixiAppSdk || {
+            onInit: () => {},
+            onNetworkData: () => {},
+            sendNetworkData: () => {},
+            onStorageData: () => {},
+            setStorage: () => {}
+        };
+
+        // Initialize Spixi app
+        SpixiAppSdk.onInit = function() {
+            console.log('DOOM Spixi App initialized');
+            updateStatus('Spixi connected. Loading DOOM engine...');
+        };
+
+        // Handle network data for multiplayer (future)
+        SpixiAppSdk.onNetworkData = function(data) {
+            console.log('Network data received:', data);
+        };
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        // Emscripten Module configuration
+        var Module = {
+            preRun: [],
+            postRun: function() {
+                updateStatus('DOOM loaded! Click canvas to start.');
+            },
+            print: function(text) {
+                console.log('DOOM:', text);
+                if (text.startsWith('doom:')) {
+                    updateStatus(text);
+                }
+            },
+            printErr: function(text) {
+                console.error('DOOM Error:', text);
+            },
+            canvas: document.getElementById('canvas'),
+            setStatus: function(text) {
+                if (text) {
+                    updateStatus(text);
+                }
+            },
+            totalDependencies: 0,
+            monitorRunDependencies: function(left) {
+                this.totalDependencies = Math.max(this.totalDependencies, left);
+                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+            }
+        };
+
+        Module.setStatus('Downloading DOOM engine...');
+        
+        // Error handling
+        window.onerror = function(event) {
+            Module.setStatus('Exception thrown, see JavaScript console');
+            Module.setStatus = function(text) {
+                if (text) console.error('[post-exception status] ' + text);
+            };
+        };
+    </script>
+    
+    <!-- Load DOOM WebAssembly -->
+    <script async src="doom.js"></script>
+</body>
+</html>

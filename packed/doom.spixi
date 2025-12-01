@@ -1,0 +1,13 @@
+caVersion = 0
+id = com.baracuda.spixi.doom
+publisher = Baracuda
+name = DOOM
+version = 1.0.0
+capabilities = multiUser
+image = doom.png
+minUsers = 
+maxUsers = 4
+protocols = 
+contentUrl = doom.zip
+checksum = 796d87a340f3fdd97507221d3120f28e2de54b333c9525ce2909d2a7332e4ed3
+contentSize = 1762482
