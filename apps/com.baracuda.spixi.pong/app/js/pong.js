@@ -708,7 +708,7 @@ function startGame() {
     }
 
     // Reset game state and initialize serve
-    resetBall();
+    resetBall(false); // Manual launch for first serve
 
     // Initialize client-side prediction state
     predictedPaddleY = gameState.localPaddle.y;
@@ -756,12 +756,12 @@ function resetBallPosition() {
 }
 
 function launchBall() {
-    if (gameState.ball.vx === 0 && gameState.isBallOwner) {
+    if (gameState.waitingForServe && gameState.isBallOwner) {
         document.getElementById('shootBtn').style.display = 'none';
         document.getElementById('status-text').textContent = 'Game On!';
         playLaunchSound();
 
-        // Ball owner launches - they have authority initially
+        gameState.waitingForServe = false;
         gameState.hasActiveBallAuthority = true;
 
         // Initialize ball velocity - always shoot toward opponent (left)
@@ -854,9 +854,8 @@ function gameLoop(timestamp) {
                 // We don't have authority - interpolate toward target for smooth motion
                 updateBallInterpolation();
             }
-        } else if (gameState.hasActiveBallAuthority) {
-            // Ball hasn't been launched yet - only show on serving player's side
-            // Keep it attached to paddle
+        } else if (gameState.waitingForServe || gameState.hasActiveBallAuthority) {
+            // Ball waiting for serve - keep attached to serving paddle
             if (gameState.isBallOwner) {
                 // Ball owner on right
                 gameState.ball.x = CANVAS_WIDTH - 20 - PADDLE_WIDTH - BALL_SIZE;
@@ -1215,7 +1214,7 @@ function checkScore() {
         if (gameState.localPaddle.lives <= 0 || gameState.remotePaddle.lives <= 0) {
             endGame(gameState.localPaddle.lives > 0);
         } else {
-            resetBall();
+            resetBall(true); // Auto launch
             sendLifeUpdate();
         }
     } else if (gameState.ball.x > CANVAS_WIDTH) {
@@ -1232,13 +1231,13 @@ function checkScore() {
         if (gameState.localPaddle.lives <= 0 || gameState.remotePaddle.lives <= 0) {
             endGame(gameState.localPaddle.lives > 0);
         } else {
-            resetBall();
+            resetBall(true); // Auto launch
             sendLifeUpdate();
         }
     }
 }
 
-function resetBall() {
+function resetBall(autoLaunch = true) {
     // Position ball at serving paddle
     resetBallPosition();
 
@@ -1247,34 +1246,50 @@ function resetBall() {
     const servingPlayer = gameState.isBallOwner;
     gameState.hasActiveBallAuthority = servingPlayer;
 
-    // Auto-launch ball from paddle with random angle toward opponent
-    const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
+    if (autoLaunch) {
+        // Auto-launch ball from paddle with random angle toward opponent
+        const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
 
-    if (gameState.isBallOwner) {
-        // Ball owner on right - shoot left (toward opponent)
-        gameState.ball.vx = -Math.cos(angle) * BALL_SPEED_INITIAL;
-    } else {
-        // Non-owner on left - shoot right (toward opponent)
-        gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL;
-    }
-    gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
-
-    // Send ball state immediately
-    const b = gameState.ball;
-    // Use synced time for launch event
-    const launchTime = timeSync.getSyncedTime();
-
-    SpixiAppSdk.sendNetworkData(JSON.stringify({
-        a: "launch",
-        t: launchTime,
-        b: {
-            x: Math.round(CANVAS_WIDTH - b.x),
-            y: Math.round(b.y),
-            vx: Math.round(-b.vx * 100),   // Integer velocity (*100)
-            vy: Math.round(b.vy * 100)
+        if (gameState.isBallOwner) {
+            // Ball owner on right - shoot left (toward opponent)
+            gameState.ball.vx = -Math.cos(angle) * BALL_SPEED_INITIAL;
+        } else {
+            // Non-owner on left - shoot right (toward opponent)
+            gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL;
         }
-    }));
-    lastDataSent = SpixiTools.getTimestamp();
+        gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
+
+        // Send ball state immediately
+        const b = gameState.ball;
+        // Use synced time for launch event
+        const launchTime = timeSync.getSyncedTime();
+
+        SpixiAppSdk.sendNetworkData(JSON.stringify({
+            a: "launch",
+            t: launchTime,
+            b: {
+                x: Math.round(CANVAS_WIDTH - b.x),
+                y: Math.round(b.y),
+                vx: Math.round(-b.vx * 100),   // Integer velocity (*100)
+                vy: Math.round(b.vy * 100)
+            }
+        }));
+        lastDataSent = SpixiTools.getTimestamp();
+    } else {
+        // Manual launch - wait for user input
+        gameState.waitingForServe = true;
+        gameState.ball.vx = 0;
+        gameState.ball.vy = 0;
+
+        if (gameState.isBallOwner) {
+            document.getElementById('status-text').textContent = "Your Serve - Tap to Launch";
+            document.getElementById('shootBtn').style.display = 'inline-flex';
+            document.getElementById('shootBtn').disabled = false;
+        } else {
+            document.getElementById('status-text').textContent = "Opponent's Serve";
+            document.getElementById('shootBtn').style.display = 'none';
+        }
+    }
 }
 
 function updateLivesDisplay() {
@@ -1372,9 +1387,9 @@ function render() {
         ctx.fillStyle = leftPaddleColor;
         ctx.fillRect(leftPaddleX, leftPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
 
-        // Draw ball - only if it has velocity OR we have authority (waiting to serve)
+        // Draw ball - only if it has velocity OR we have authority OR waiting for serve
         // Lower threshold to 0.01 to ensure ball is visible even at very low speeds
-        const ballVisible = (Math.abs(gameState.ball.vx) > 0.01 || Math.abs(gameState.ball.vy) > 0.01) || gameState.hasActiveBallAuthority;
+        const ballVisible = (Math.abs(gameState.ball.vx) > 0.01 || Math.abs(gameState.ball.vy) > 0.01) || gameState.hasActiveBallAuthority || gameState.waitingForServe;
         if (ballVisible) {
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
