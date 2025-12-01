@@ -11,7 +11,7 @@ node pack-app.js apps/com.baracuda.spixi.doom packed
 git add .
 
 3. Commit changes
-git commit -m "Fix joystick unresponsiveness by enabling pointer events"
+git commit -m "Fix corrupted index.html and enable joystick pointer events"
 
 4. Push to main
 // turbo
