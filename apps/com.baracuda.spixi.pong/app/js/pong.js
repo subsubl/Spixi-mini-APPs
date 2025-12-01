@@ -327,6 +327,7 @@ let lastSentFrameCounter = 0; // Track last sent frame to avoid redundant sends
 let lastSentSeq = 0; // Track last sent sequence to avoid redundant sends
 let lastSentLastAck = 0; // Track last sent lastAck to avoid redundant sends
 let lastSentBallState = null; // Track last sent ball state to detect changes
+let lastBallSyncTime = 0; // Track last time ball state was sent (for heartbeat)
 
 // Lag compensation - collision events with timestamps for retroactive processing
 let pendingCollisionEvents = []; // Buffer of collision events with timestamps
@@ -431,8 +432,14 @@ function handleConnectionEstablished() {
     }
 
     // Transition to game screen
-    document.getElementById('waiting-screen').classList.replace('screen-active', 'screen-hidden');
-    document.getElementById('game-screen').classList.replace('screen-hidden', 'screen-active');
+    const waitingScreen = document.getElementById('waiting-screen');
+    const gameScreen = document.getElementById('game-screen');
+
+    waitingScreen.classList.remove('screen-active');
+    waitingScreen.classList.add('screen-hidden');
+
+    gameScreen.classList.remove('screen-hidden');
+    gameScreen.classList.add('screen-active');
 
     // Auto-start after brief delay
     autoStartTimer = setTimeout(() => startGame(), 500);
@@ -895,61 +902,6 @@ function updateBall() {
  * from 10fps network updates (every ~100ms)
  * 
  * This creates smooth motion by:
- * 1. Moving ball forward using current velocity (like authoritative player)
- * 2. Gently correcting position toward target to fix drift
- * 3. Snapping velocity on large changes (indicates bounce/collision)
- */
-function updateBallInterpolation() {
-    // First, extrapolate position using current velocity (like local simulation)
-    // This gives us smooth 60fps motion between network updates
-    gameState.ball.x += gameState.ball.vx;
-    gameState.ball.y += gameState.ball.vy;
-
-    // Handle wall bounces locally for smooth response
-    if (gameState.ball.y <= BALL_SIZE / 2 || gameState.ball.y >= CANVAS_HEIGHT - BALL_SIZE / 2) {
-        gameState.ball.vy = -gameState.ball.vy;
-        gameState.ball.y = Math.max(BALL_SIZE / 2, Math.min(CANVAS_HEIGHT - BALL_SIZE / 2, gameState.ball.y));
-        playWallBounceSound();
-    }
-
-    // Now gently correct any drift toward authoritative position
-    const distanceToTarget = Math.sqrt(
-        Math.pow(gameState.ball.x - ballTarget.x, 2) +
-        Math.pow(gameState.ball.y - ballTarget.y, 2)
-    );
-
-    // Dynamic correction:
-    // - Large error (>50px): Snap immediately (something went wrong/lag spike)
-    // - Medium error (>10px): Fast correction (20% per frame)
-    // - Small error (>1px): Gentle correction (5% per frame)
-    // - Tiny error: Ignore to prevent micro-jitter
-
-    if (distanceToTarget > 50) {
-        // Snap to target if very far (indicates major correction/lag spike)
-        gameState.ball.x = ballTarget.x;
-        gameState.ball.y = ballTarget.y;
-        gameState.ball.vx = ballTarget.vx;
-        gameState.ball.vy = ballTarget.vy;
-    } else if (distanceToTarget > 1) {
-        // Apply dynamic position correction
-        // Closer = gentler, Further = faster
-        const correctionFactor = distanceToTarget > 10 ? 0.2 : 0.05;
-
-        gameState.ball.x += (ballTarget.x - gameState.ball.x) * correctionFactor;
-        gameState.ball.y += (ballTarget.y - gameState.ball.y) * correctionFactor;
-    }
-
-    // Check if velocity changed significantly (indicates bounce/collision)
-    const velocityDiff = Math.sqrt(
-        Math.pow(gameState.ball.vx - ballTarget.vx, 2) +
-        Math.pow(gameState.ball.vy - ballTarget.vy, 2)
-    );
-
-    // Snap velocity on significant change (bounce detected)
-    if (velocityDiff > 1.0) {
-        gameState.ball.vx = ballTarget.vx;
-        gameState.ball.vy = ballTarget.vy;
-    } else if (velocityDiff > 0.1) {
         // Small velocity drift - correct gently
         gameState.ball.vx += (ballTarget.vx - gameState.ball.vx) * 0.1;
         gameState.ball.vy += (ballTarget.vy - gameState.ball.vy) * 0.1;
@@ -1387,66 +1339,6 @@ function performFullReset() {
     gameState.remotePaddle.y = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
     gameState.remotePaddle.lives = MAX_LIVES;
     gameState.gameStarted = false;
-    gameState.gameEnded = false;
-    gameState.isBallOwner = false;
-    gameState.hasActiveBallAuthority = false;
-
-    // Reset ball
-    gameState.ball.x = CANVAS_WIDTH / 2;
-    gameState.ball.y = CANVAS_HEIGHT / 2;
-    gameState.ball.vx = 0;
-    gameState.ball.vy = 0;
-
-    // Reset prediction state
-    predictedPaddleY = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
-    lastAuthorativePaddleY = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
-    lastAcknowledgedSequence = 0;
-    inputSequence = 0;
-    pendingInputs = [];
-
-    // Reset frame counters
-    frameCounter = 0;
-    remoteFrameCounter = 0;
-    frameCounterMismatchCount = 0;
-
-    // Reset networking state
-    lastDataSent = 0;
-    lastSyncTime = 0;
-    lastSentFrameCounter = 0;
-    lastSentSeq = 0;
-    lastSentLastAck = 0;
-    lastSentPaddleY = gameState.localPaddle.y;
-
-    // Reset wheel position to center
-    if (wheelHandle) {
-        wheelHandle.style.top = '50%';
-    }
-
-    updateLivesDisplay();
-
-    // Transition to waiting screen
-    const gameOverScreen = document.getElementById('game-over-screen');
-    const gameScreen = document.getElementById('game-screen');
-    const waitingScreen = document.getElementById('waiting-screen');
-
-    if (gameOverScreen.classList.contains('screen-active')) {
-        gameOverScreen.classList.replace('screen-active', 'screen-hidden');
-    }
-    if (gameScreen.classList.contains('screen-active')) {
-        gameScreen.classList.replace('screen-active', 'screen-hidden');
-    }
-    waitingScreen.classList.replace('screen-hidden', 'screen-active');
-
-    const waitingText = document.querySelector('.waiting-text');
-    if (waitingText) {
-        waitingText.textContent = 'Reconnecting to opponent...';
-    }
-
-    // Re-establish connection
-    setTimeout(() => establishConnection(), 100);
-}
-
-function exitGame() {
     // Notify opponent about exit
     try {
         SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "exit" }));
@@ -1645,17 +1537,27 @@ function sendGameState() {
 
         const newBallState = reusableBallState;
 
-        // Only include if changed significantly (position differs by >2px or velocity changed)
-        const ballStateChanged = !lastSentBallState ||
-            Math.abs(lastSentBallState.x - newBallState.x) > 2 ||
-            Math.abs(lastSentBallState.y - newBallState.y) > 2 ||
+        // Check for significant changes to determine if we should send update
+        // 1. Velocity change (bounce/hit) - CRITICAL
+        const velocityChanged = !lastSentBallState ||
             lastSentBallState.vx !== newBallState.vx ||
             lastSentBallState.vy !== newBallState.vy;
 
-        if (ballStateChanged) {
+        // 2. Position drift (correction) - if error > 10px
+        const positionDrift = lastSentBallState && (
+            Math.abs(lastSentBallState.x - newBallState.x) > 10 ||
+            Math.abs(lastSentBallState.y - newBallState.y) > 10
+        );
+
+        // 3. Heartbeat (periodic sync) - every 1 second
+        const currentTime = Date.now();
+        const heartbeatNeeded = currentTime - lastBallSyncTime > 1000;
+
+        if (velocityChanged || positionDrift || heartbeatNeeded) {
             // Need to clone for lastSentBallState since we reuse the object
             lastSentBallState = { ...newBallState };
             state.b = newBallState;
+            lastBallSyncTime = currentTime;
         }
     } else if (!ballActive) {
         // Ball stopped - clear cached state
