@@ -1,0 +1,22 @@
+{
+    "targets": {
+        "debug": {
+            "outFile": "build/pong.wasm",
+            "textFile": "build/pong.wat",
+            "sourceMap": true,
+            "debug": true
+        },
+        "release": {
+            "outFile": "../wasm/pong.wasm",
+            "textFile": "../wasm/pong.wat",
+            "sourceMap": true,
+            "optimizeLevel": 3,
+            "shrinkLevel": 1,
+            "converge": false,
+            "noAssert": false
+        }
+    },
+    "options": {
+        "bindings": "esm"
+    }
+}

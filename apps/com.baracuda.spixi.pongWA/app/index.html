@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pong - Multiplayer Game</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Waiting Screen -->
+        <div id="waiting-screen" class="screen-active">
+            <div class="waiting-hero">
+                <div class="court-animation">
+                    <div class="court-line court-line-top"></div>
+                    <div class="court-line court-line-middle"></div>
+                    <div class="court-line court-line-bottom"></div>
+                    <div class="paddle paddle-left"></div>
+                    <div class="paddle paddle-right"></div>
+                    <div class="ball"></div>
+                </div>
+                
+                <div class="title-wrapper">
+                    <h1 class="game-title">
+                        <span class="title-letter">P</span>
+                        <span class="title-letter">o</span>
+                        <span class="title-letter">n</span>
+                        <span class="title-letter">g</span>
+                    </h1>
+                    <p class="game-subtitle">Classic Multiplayer</p>
+                </div>
+            </div>
+
+            <div class="connection-panel">
+                <div class="connection-indicator">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="connection-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                </div>
+                <h2 class="connection-title">Waiting for Opponent</h2>
+                <p class="connection-message">Establishing secure peer connection...</p>
+                <div class="connection-dots">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen-hidden">
+            <!-- Header with Scores -->
+            <header class="game-header">
+                <div class="score-container player-score">
+                    <div class="score-label">You</div>
+                    <div class="score-value" id="local-score">3</div>
+                    <div class="lives-indicator">
+                        <span class="life-dot active"></span>
+                        <span class="life-dot active"></span>
+                        <span class="life-dot active"></span>
+                    </div>
+                </div>
+                
+                <div class="game-status">
+                    <div class="status-badge" id="status-text">GET READY!</div>
+                </div>
+                
+                <div class="score-container opponent-score">
+                    <div class="score-label">Opponent</div>
+                    <div class="score-value" id="remote-score">3</div>
+                    <div class="lives-indicator">
+                        <span class="life-dot active"></span>
+                        <span class="life-dot active"></span>
+                        <span class="life-dot active"></span>
+                    </div>
+                </div>
+                
+                <div class="header-buttons">
+                    <button id="soundToggleBtn" class="header-btn" aria-label="Toggle sound">
+                        <svg id="soundOnIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                        <svg id="soundOffIcon" style="display: none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <line x1="23" y1="9" x2="17" y2="15"></line>
+                            <line x1="17" y1="9" x2="23" y2="15"></line>
+                        </svg>
+                    </button>
+                    <button id="restartGameBtn" class="header-btn" aria-label="Restart game">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
+                    </button>
+                    <button id="exitBtn" class="header-btn" aria-label="Exit game">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Game Canvas -->
+            <div class="canvas-wrapper">
+                <canvas id="pongCanvas"></canvas>
+                <div class="canvas-overlay" id="canvasOverlay"></div>
+            </div>
+            
+            <!-- Game Controls -->
+            <div class="game-controls">
+                <div class="action-buttons" id="game-buttons">
+                    <button id="startBtn" class="btn btn-primary" style="display: none;">
+                        <span class="btn-icon">▶</span>
+                        <span class="btn-text">Start Game</span>
+                    </button>
+                    <button id="shootBtn" class="btn btn-accent" style="display: none;">
+                        <span class="btn-icon">🎯</span>
+                        <span class="btn-text">Launch Ball</span>
+                    </button>
+                </div>
+                
+                <!-- Scrolling Wheel Control -->
+                <div class="wheel-container" id="wheelContainer">
+                    <div class="wheel-track">
+                        <div class="wheel-handle" id="wheelHandle">
+                            <div class="wheel-grip"></div>
+                            <div class="wheel-grip"></div>
+                            <div class="wheel-grip"></div>
+                        </div>
+                    </div>
+                    <div class="wheel-label">Drag to Control</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen-hidden">
+            <div class="game-over-content">
+                <div class="result-icon" id="resultIcon">
+                    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <path d="M30 50 L45 65 L70 35" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h1 id="result-text" class="result-title">Victory!</h1>
+                <p id="final-score" class="result-score"></p>
+                <div class="result-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Duration</span>
+                        <span class="stat-value" id="gameDuration">2:34</span>
+                    </div>
+                </div>
+                <button id="restartBtn" class="btn btn-primary btn-large">
+                    <span class="btn-icon">🎮</span>
+                    <span class="btn-text">Play Again</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/spixi-app-sdk.js"></script>
+    <script src="js/spixi-tools.js"></script>
+    <script src="js/pong.js"></script>
+</body>
+</html>

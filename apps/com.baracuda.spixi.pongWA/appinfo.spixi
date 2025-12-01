@@ -1,0 +1,7 @@
+caVersion = 0
+id = com.baracuda.spixi.pongWA
+publisher = Baracuda
+name = Pong WA
+version=1.0.0
+capabilities = multiUser
+maxUsers = 2
