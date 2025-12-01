@@ -427,36 +427,6 @@ let framesMeasured = 0;
 const reusableStatePacket = { a: "state" };
 const reusableBallState = { x: 0, y: 0, vx: 0, vy: 0 };
 
-// WebAssembly State
-let wasmModule = null;
-let wasmMemory = null;
-let wasmExports = null;
-let wasmFloat64 = null;
-let wasmInt32 = null;
-
-async function loadWasm() {
-    try {
-        const response = await fetch('../wasm/pong.wasm');
-        const buffer = await response.arrayBuffer();
-        const module = await WebAssembly.instantiate(buffer, {
-            env: {
-                abort: () => console.error("Abort called from Wasm")
-            }
-        });
-        wasmExports = module.instance.exports;
-        wasmMemory = wasmExports.memory;
-        wasmFloat64 = new Float64Array(wasmMemory.buffer);
-        wasmInt32 = new Int32Array(wasmMemory.buffer);
-        wasmModule = module;
-        console.log("Wasm loaded");
-
-        // Initialize Wasm
-        wasmExports.init();
-    } catch (e) {
-        console.error("Failed to load Wasm:", e);
-    }
-}
-
 // Simplified connection handshake with retry mechanism
 function establishConnection() {
     // Send connection request with session ID and random number for ball owner determination
@@ -680,8 +650,7 @@ function setupControls() {
     if (shootBtn) {
         shootBtn.addEventListener('click', () => {
             if (!audioContext) initAudioContext();
-            // Use new manual serve logic
-            if (gameState.waitingForServe && gameState.isMyTurn) {
+            if (gameState.isBallOwner && gameState.ball.vx === 0) {
                 launchBall();
             }
         });
@@ -738,14 +707,15 @@ function startGame() {
         gameState.isBallOwner = myRandomNumber > remoteRandomNumber;
     }
 
-    // Update UI - handled by resetBall
+    // Update UI
     document.getElementById('startBtn').style.display = 'none';
     const shootBtn = document.getElementById('shootBtn');
     shootBtn.style.display = 'inline-flex';
+    shootBtn.disabled = !gameState.isBallOwner;
+    document.getElementById('status-text').textContent = gameState.isBallOwner ? 'Launch Ball!' : 'Opponent Serves...';
 
-    // Reset game state and set up initial serve
-    // Default server is the ball owner (right side)
-    resetBall(gameState.isBallOwner ? 'right' : 'left');
+    // Reset game state
+    resetBallPosition();
 
     // Initialize client-side prediction state
     predictedPaddleY = gameState.localPaddle.y;
@@ -799,11 +769,6 @@ function resetBallPosition() {
     }
     gameState.ball.vx = 0;
     gameState.ball.vy = 0;
-
-    // Sync to Wasm
-    if (wasmExports) {
-        wasmExports.setBallState(gameState.ball.x, gameState.ball.y, gameState.ball.vx, gameState.ball.vy);
-    }
 }
 
 function launchBall() {
@@ -823,11 +788,6 @@ function launchBall() {
 
         gameState.ball.vx = direction * Math.cos(angle) * BALL_SPEED_INITIAL;
         gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
-
-        // Sync to Wasm
-        if (wasmExports) {
-            wasmExports.setBallState(gameState.ball.x, gameState.ball.y, gameState.ball.vx, gameState.ball.vy);
-        }
 
         // Notify other player with ball velocity included
         const b = gameState.ball;
@@ -903,30 +863,7 @@ function gameLoop(timestamp) {
         if (ballHasVelocity) {
             // Simulate ball if we have authority, otherwise interpolate toward target
             if (gameState.hasActiveBallAuthority) {
-                // Wasm Physics Integration
-                if (wasmExports) {
-                    // Sync paddles to Wasm
-                    wasmExports.setPaddleY(gameState.localPaddle.y);
-                    wasmExports.setRemotePaddleY(gameState.remotePaddle.y);
-
-                    // Run Wasm physics
-                    wasmExports.update(1.0);
-
-                    // Read back ball state
-                    // ball is a pointer to the struct in memory
-                    const ballPtr = wasmExports.ball.value;
-                    // Float64Array index = byteOffset / 8
-                    const f64Index = ballPtr / 8;
-
-                    gameState.ball.x = wasmFloat64[f64Index];
-                    gameState.ball.y = wasmFloat64[f64Index + 1];
-                    gameState.ball.vx = wasmFloat64[f64Index + 2];
-                    gameState.ball.vy = wasmFloat64[f64Index + 3];
-                } else {
-                    // Fallback to JS if Wasm not loaded
-                    updateBall();
-                }
-
+                updateBall();
                 checkCollisions();
 
                 // Only ball owner checks score (game logic authority)
@@ -1255,11 +1192,6 @@ function checkCollisions() {
 
         // Send ball state with collision timestamp info
         sendBallStateWithCollision();
-
-        // Sync to Wasm
-        if (wasmExports) {
-            wasmExports.setBallState(gameState.ball.x, gameState.ball.y, gameState.ball.vx, gameState.ball.vy);
-        }
     }
 
     // Left paddle collision (non-owner)
@@ -1288,11 +1220,6 @@ function checkCollisions() {
 
         // Send ball state with collision timestamp info
         sendBallStateWithCollision();
-
-        // Sync to Wasm
-        if (wasmExports) {
-            wasmExports.setBallState(gameState.ball.x, gameState.ball.y, gameState.ball.vx, gameState.ball.vy);
-        }
     }
 }
 
@@ -1802,11 +1729,6 @@ function handleBallEvent(msg) {
 
     // Ensure we don't have authority
     gameState.hasActiveBallAuthority = false;
-
-    // Sync to Wasm
-    if (wasmExports) {
-        wasmExports.setBallState(gameState.ball.x, gameState.ball.y, gameState.ball.vx, gameState.ball.vy);
-    }
 }
 
 // Network functions - Unified game state sync at 10fps (100ms intervals)
@@ -2394,8 +2316,4 @@ SpixiAppSdk.onStorageData = function (key, value) {
 };
 
 // Start the app on load
-window.onload = function () {
-    loadWasm().then(() => {
-        SpixiAppSdk.fireOnLoad();
-    });
-};
+window.onload = SpixiAppSdk.fireOnLoad;

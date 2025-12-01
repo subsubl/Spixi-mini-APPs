@@ -707,15 +707,8 @@ function startGame() {
         gameState.isBallOwner = myRandomNumber > remoteRandomNumber;
     }
 
-    // Update UI
-    document.getElementById('startBtn').style.display = 'none';
-    const shootBtn = document.getElementById('shootBtn');
-    shootBtn.style.display = 'inline-flex';
-    shootBtn.disabled = !gameState.isBallOwner;
-    document.getElementById('status-text').textContent = gameState.isBallOwner ? 'Launch Ball!' : 'Opponent Serves...';
-
-    // Reset game state
-    resetBallPosition();
+    // Reset game state and initialize serve
+    resetBall();
 
     // Initialize client-side prediction state
     predictedPaddleY = gameState.localPaddle.y;
