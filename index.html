@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -523,8 +524,15 @@
         }
 
         @keyframes pulse-green {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
         }
 
         .server-controls {
@@ -854,24 +862,32 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Hero Section -->
     <div class="hero">
         <div class="hero-content">
             <h1>⚡ Spixi Mini Apps</h1>
-            <p>Test and develop decentralized applications locally. Run your mini app in the browser with full SDK access and real-time network simulation.</p>
+            <p>Test and develop decentralized applications locally. Run your mini app in the browser with full SDK
+                access and real-time network simulation.</p>
             <div class="hero-buttons">
-                <button class="hero-btn hero-btn-primary" id="heroStartServerBtn" onclick="document.querySelector('.dev-server-footer').scrollIntoView({behavior: 'smooth'})">▶️ Start Dev Server</button>
-                <button class="hero-btn hero-btn-secondary" onclick="document.querySelector('.section').scrollIntoView({behavior: 'smooth'})">📱 Explore Apps</button>
+                <button class="hero-btn hero-btn-primary" id="heroStartServerBtn"
+                    onclick="document.querySelector('.dev-server-footer').scrollIntoView({behavior: 'smooth'})">▶️ Start
+                    Dev Server</button>
+                <button class="hero-btn hero-btn-secondary"
+                    onclick="document.querySelector('.section').scrollIntoView({behavior: 'smooth'})">📱 Explore
+                    Apps</button>
             </div>
         </div>
     </div>
 
     <!-- Mini Apps Section -->
-    <div class="section" style="background: linear-gradient(135deg, rgba(10, 14, 39, 0.5) 0%, rgba(26, 31, 58, 0.5) 100%); border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+    <div class="section"
+        style="background: linear-gradient(135deg, rgba(10, 14, 39, 0.5) 0%, rgba(26, 31, 58, 0.5) 100%); border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
         <div class="section-header">
             <h2 class="section-title">📱 Mini Apps</h2>
-            <p class="section-subtitle">Select an app to view, test, or extract locally. Toggle dev mode for enhanced testing features.</p>
+            <p class="section-subtitle">Select an app to view, test, or extract locally. Toggle dev mode for enhanced
+                testing features.</p>
         </div>
         <div class="apps-grid" id="appsGrid"></div>
     </div>
@@ -942,29 +958,36 @@
 
                 <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
                     <button class="config-btn config-btn-save" id="connectMqttBtn" style="flex: 1;">🔌 Connect</button>
-                    <button class="config-btn config-btn-stop" id="disconnectMqttBtn" style="flex: 1;" disabled>🔌 Disconnect</button>
+                    <button class="config-btn config-btn-stop" id="disconnectMqttBtn" style="flex: 1;" disabled>🔌
+                        Disconnect</button>
                 </div>
 
-                <div id="mqttStatus" style="display: none; margin-top: 1rem; padding: 0.75rem; border-radius: 4px; font-size: 0.875rem; text-align: center;"></div>
+                <div id="mqttStatus"
+                    style="display: none; margin-top: 1rem; padding: 0.75rem; border-radius: 4px; font-size: 0.875rem; text-align: center;">
+                </div>
 
                 <div class="config-buttons">
                     <button class="config-btn config-btn-save" id="saveConfigBtn">💾 Save</button>
                     <button class="config-btn config-btn-reset" id="resetConfigBtn">🔄 Reset</button>
                 </div>
 
-                <div id="configStatus" style="display: none; margin-top: 1rem; padding: 0.75rem; border-radius: 4px; font-size: 0.875rem; text-align: center;"></div>
+                <div id="configStatus"
+                    style="display: none; margin-top: 1rem; padding: 0.75rem; border-radius: 4px; font-size: 0.875rem; text-align: center;">
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Upload & How To Section -->
-    <div class="section" style="background: linear-gradient(135deg, rgba(10, 14, 39, 0.3) 0%, rgba(26, 31, 58, 0.3) 100%);">
+    <div class="section"
+        style="background: linear-gradient(135deg, rgba(10, 14, 39, 0.3) 0%, rgba(26, 31, 58, 0.3) 100%);">
         <div class="section-header">
             <h2 class="section-title">📤 Upload Your App</h2>
             <p class="section-subtitle">Submit your mini app files (.spixi, .zip, .png) to test locally</p>
         </div>
 
-        <div style="max-width: 600px; margin: 0 auto; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 2rem;">
+        <div
+            style="max-width: 600px; margin: 0 auto; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 2rem;">
             <div class="file-input">
                 <label for="fileInput">
                     📁 Select Files to Upload
@@ -978,7 +1001,8 @@
     </div>
 
     <!-- Instructions Section -->
-    <div class="section" style="background: linear-gradient(135deg, rgba(10, 14, 39, 0.5) 0%, rgba(26, 31, 58, 0.5) 100%); border-top: 1px solid rgba(148, 163, 184, 0.1);">
+    <div class="section"
+        style="background: linear-gradient(135deg, rgba(10, 14, 39, 0.5) 0%, rgba(26, 31, 58, 0.5) 100%); border-top: 1px solid rgba(148, 163, 184, 0.1);">
         <div class="section-header">
             <h2 class="section-title">📖 How to Test</h2>
             <p class="section-subtitle">Step-by-step guide for testing mini apps locally</p>
@@ -987,19 +1011,27 @@
         <div style="max-width: 800px; margin: 0 auto;">
             <div class="instructions">
                 <ol>
-                    <li><strong>Start the Dev Server</strong> – Click "Start" in the Developer Tools section above. The status badge will turn green when ready.</li>
-                    <li><strong>View an App</strong> – Click "🌐 View App" on any app card to open it directly in your browser.</li>
+                    <li><strong>Start the Dev Server</strong> – Click "Start" in the Developer Tools section above. The
+                        status badge will turn green when ready.</li>
+                    <li><strong>View an App</strong> – Click "🌐 View App" on any app card to open it directly in your
+                        browser.</li>
                     <li><strong>Extract Files</strong> – Click "💾 Extract" to download and unzip the app locally.</li>
-                    <li><strong>Toggle Dev Mode</strong> – Switch the "🔧 Dev Mode" toggle on app cards for enhanced testing features.</li>
-                    <li><strong>Check Console</strong> – Open your browser console (F12) to see SDK debug messages and network activity.</li>
-                    <li><strong>Upload Custom Apps</strong> – Use the upload section above to test your own mini apps.</li>
-                    <li><strong>Multiplayer Testing</strong> – For full network tests, use the Spixi client application or open multiple browser tabs.</li>
+                    <li><strong>Toggle Dev Mode</strong> – Switch the "🔧 Dev Mode" toggle on app cards for enhanced
+                        testing features.</li>
+                    <li><strong>Check Console</strong> – Open your browser console (F12) to see SDK debug messages and
+                        network activity.</li>
+                    <li><strong>Upload Custom Apps</strong> – Use the upload section above to test your own mini apps.
+                    </li>
+                    <li><strong>Multiplayer Testing</strong> – For full network tests, use the Spixi client application
+                        or open multiple browser tabs.</li>
                 </ol>
             </div>
 
-            <div style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; border-radius: 6px; padding: 1.5rem; margin-top: 2rem;">
+            <div
+                style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; border-radius: 6px; padding: 1.5rem; margin-top: 2rem;">
                 <p style="margin: 0; color: #86efac;">
-                    <strong>💡 Tip:</strong> Many SDK features work in the browser, but network communication, multiplayer gameplay, and blockchain transactions require the full Spixi client environment.
+                    <strong>💡 Tip:</strong> Many SDK features work in the browser, but network communication,
+                    multiplayer gameplay, and blockchain transactions require the full Spixi client environment.
                 </p>
             </div>
         </div>
@@ -1011,7 +1043,7 @@
         // ============================================
         (function () {
             const DEV_SERVER_WS_URL = 'ws://localhost:8888/ws';
-            
+
             // Only load if in HTTP context (not file://)
             if (location.protocol !== 'http:' && location.protocol !== 'https:') {
                 console.warn('[SpixiMock] Not loading - requires http/https protocol');
@@ -1173,7 +1205,7 @@
                     },
 
                     // Callback handlers (to be overridden by apps)
-                    onInit: function(sessionId, userAddresses) {
+                    onInit: function (sessionId, userAddresses) {
                         logMock("onInit handler should be overridden!");
                     },
                     onStorageData: function (key, value) {
@@ -1280,7 +1312,7 @@
             async start(ctx) {
                 this.isRunning = true;
                 console.log('[DevServer] NODE.JS WebSocket MODE - Broker started');
-                
+
                 // Set up message processing loop
                 this.processMessages();
                 return true;
@@ -1413,7 +1445,7 @@
 
                     // 4. Initialize WebSocket server simulator
                     this.initializeWebSocketServer();
-                    
+
                     // 5. Initialize Mock SDK
                     this.initializeMockSDK();
 
@@ -1434,7 +1466,7 @@
 
                     // Initialize callbacks
                     this.setMockSDKCallbacks();
-                    
+
                     // Test connectivity
                     try {
                         this.testMockSDK();
@@ -1457,7 +1489,7 @@
                 // Subscribe to app messages
                 this.broker.subscribe('AppMessage', (topic, payload) => {
                     console.log('[DevServer] App message received:', payload.substring(0, 100));
-                    
+
                     try {
                         const message = JSON.parse(payload);
                         this.handleAppMessage(message);
@@ -1474,7 +1506,7 @@
 
             handleAppMessage(message) {
                 console.log('[DevServer] Handling app message:', message);
-                
+
                 // Echo back response
                 const response = {
                     ...message,
@@ -1489,7 +1521,7 @@
 
             initializeWebSocketServer() {
                 console.log('[DevServer] Initializing WebSocket server simulator...');
-                
+
                 // Create a fake WebSocket server that handles messages
                 this.wsServer = {
                     broadcast: (message) => {
@@ -1504,7 +1536,7 @@
                             }
                         });
                     },
-                    
+
                     on: (eventType, handler) => {
                         if (eventType === 'connection') {
                             this.wsConnectionHandler = handler;
@@ -1514,7 +1546,7 @@
 
                 // Hook into actual WebSocket to capture messages
                 this.interceptWebSocketMessages();
-                
+
                 console.log('[DevServer] ✅ WebSocket server ready on port 8888');
             }
 
@@ -1522,25 +1554,25 @@
                 const originalWebSocket = window.WebSocket;
                 const self = this;
 
-                window.WebSocket = function(url, ...args) {
+                window.WebSocket = function (url, ...args) {
                     console.log('[DevServer] WebSocket connection attempted to:', url);
-                    
+
                     const ws = new originalWebSocket(url, ...args);
                     const originalSend = ws.send;
 
-                    ws.send = function(data) {
+                    ws.send = function (data) {
                         console.log('[DevServer] WebSocket message from client:', data.substring(0, 100));
-                        
+
                         try {
                             const message = JSON.parse(data);
-                            
+
                             // Route to broker
                             if (message.protocolId) {
                                 self.broker.publish('ProtocolMessage', 'app-client', data);
                             } else if (message.action) {
                                 self.broker.publish('AppMessage', 'app-client', data);
                             }
-                            
+
                             // Echo back responses
                             setTimeout(() => {
                                 const response = {
@@ -1567,7 +1599,7 @@
                 if (!sdk) {
                     throw new Error('Mock SDK not initialized');
                 }
-                
+
                 // Enhance SDK with server callbacks
                 sdk.serverConnected = true;
                 sdk.broker = this.broker;
@@ -1616,7 +1648,7 @@
             }
 
             // ========== Health Check ==========
-            
+
             startHealthCheck() {
                 this.healthCheckInterval = setInterval(async () => {
                     try {
@@ -1640,7 +1672,7 @@
             }
 
             // ========== Mock SDK Integration ==========
-            
+
             getMockSDK() {
                 if (typeof window.SpixiAppSdk !== 'undefined') {
                     return window.SpixiAppSdk;
@@ -1666,15 +1698,15 @@
                 }
 
                 console.log('[DevServer] Testing Mock SDK...');
-                
+
                 // Test storage
                 sdk.setStorageData('dev_test', btoa(JSON.stringify({ timestamp: tools.getTimestamp() })));
                 sdk.getStorageData('dev_test');
-                
+
                 // Test network data
-                sdk.sendNetworkData(JSON.stringify({ 
+                sdk.sendNetworkData(JSON.stringify({
                     type: 'health_check',
-                    timestamp: tools.getTimestamp() 
+                    timestamp: tools.getTimestamp()
                 }));
 
                 console.log('[DevServer] ✅ Mock SDK test passed');
@@ -1693,7 +1725,7 @@
                 // Log network data
                 sdk.onNetworkData = (sender, data) => {
                     console.log('[DevServer] 📤 Network data from', sender, ':', data.substring(0, 100));
-                    
+
                     // Route through broker
                     if (this.broker) {
                         this.broker.publish('AppMessage', sender, data);
@@ -1708,7 +1740,7 @@
                 // Log protocol messages
                 sdk.onNetworkProtocolData = (sender, protocolId, data) => {
                     console.log('[DevServer] 📨 Protocol:', protocolId, '- Data:', data.substring(0, 100));
-                    
+
                     // Route through broker
                     if (this.broker) {
                         this.broker.publish('ProtocolMessage', sender, data);
@@ -1815,9 +1847,9 @@
         function showConfigStatus(message, type = 'success') {
             configStatus.textContent = message;
             configStatus.style.display = 'block';
-            configStatus.style.background = type === 'success' ? 
+            configStatus.style.background = type === 'success' ?
                 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-            configStatus.style.borderLeft = type === 'success' ? 
+            configStatus.style.borderLeft = type === 'success' ?
                 '3px solid #10b981' : '3px solid #ef4444';
             configStatus.style.color = type === 'success' ? '#10b981' : '#ef4444';
 
@@ -1866,10 +1898,10 @@
                 const response = await fetch('/api/mqtt/status');
                 const status = await response.json();
                 mqttConnected = status.isConnected;
-                
+
                 connectMqttBtn.disabled = mqttConnected;
                 disconnectMqttBtn.disabled = !mqttConnected;
-                
+
                 if (mqttConnected) {
                     showMqttStatus(`✅ Connected (${status.subscriptions.length} subscriptions)`, 'success');
                 } else {
@@ -1888,13 +1920,13 @@
                     port: parseInt(configInputs.mqttPort.value),
                     clientId: configInputs.clientId.value
                 };
-                
+
                 const response = await fetch('/api/mqtt/connect', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(config)
                 });
-                
+
                 const result = await response.json();
                 if (result.success) {
                     showMqttStatus('✅ ' + result.message, 'success');
@@ -1931,7 +1963,7 @@
             devServerConfig.mqttHost = configInputs.mqttHost.value;
             devServerConfig.mqttPort = parseInt(configInputs.mqttPort.value);
             devServerConfig.clientId = configInputs.clientId.value;
-            
+
             saveDevServerConfig();
             showMqttStatus('✅ MQTT settings saved', 'success');
         });
@@ -1958,7 +1990,7 @@
                 devServerConfig.mqttHost = configInputs.mqttHost.value;
                 devServerConfig.mqttPort = parseInt(configInputs.mqttPort.value);
                 devServerConfig.clientId = configInputs.clientId.value;
-                
+
                 saveDevServerConfig();
                 showConfigStatus('✅ Configuration saved successfully!', 'success');
             } else {
@@ -1987,10 +2019,10 @@
                 await devServerManager.startServer();
                 devServerRunning = true;
                 updateDevServerStatus();
-                
+
                 // Initialize mock SDK callbacks
                 devServerManager.setMockSDKCallbacks();
-                
+
                 // Test mock SDK connectivity
                 try {
                     devServerManager.testMockSDK();
@@ -2299,6 +2331,16 @@
         // App manifest - loaded from packed directory
         const apps = [
             {
+                name: 'DOOM',
+                version: '1.0.4',
+                id: 'com.baracuda.spixi.doom',
+                icon: '👹',
+                description: 'Classic DOOM game port.',
+                url: '../apps/com.baracuda.spixi.doom/app/index.html',
+                zip: '../packed/doom.zip',
+                devMode: false
+            },
+            {
                 name: 'Pong',
                 version: '3.2.0',
                 id: 'com.baracuda.spixi.pong',
@@ -2384,9 +2426,35 @@
         let allApps = [...apps]; // Start with built-in apps
 
         async function loadAndRenderApps() {
-            // For now, just render built-in apps; DB/uploaded apps are optional
-            allApps = [...apps];
-            renderApps();
+            try {
+                // Try to fetch apps from the API
+                const response = await fetch('/api/apps');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.apps) {
+                        console.log(`[Apps] Loaded ${data.apps.length} apps from API`);
+                        allApps = data.apps;
+
+                        // Load dev modes from localStorage for built-in apps
+                        await loadAppDevModes();
+
+                        renderApps();
+                        return;
+                    }
+                }
+
+                // Fallback to hardcoded apps if API fails
+                console.warn('[Apps] API failed, using hardcoded app list');
+                allApps = [...apps];
+                await loadAppDevModes();
+                renderApps();
+            } catch (error) {
+                console.error('[Apps] Error loading apps:', error);
+                // Fallback to hardcoded apps on error
+                allApps = [...apps];
+                await loadAppDevModes();
+                renderApps();
+            }
         }
 
         function renderApps() {
@@ -2687,4 +2755,5 @@
         });
     </script>
 </body>
+
 </html>

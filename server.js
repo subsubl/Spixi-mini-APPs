@@ -163,6 +163,12 @@ const mainServer = http.createServer((req, res) => {
         return;
     }
 
+    // Handle apps API (GET)
+    if (req.url.startsWith('/api/apps')) {
+        handleAppsApi(req, res);
+        return;
+    }
+
     // Remove query string from URL
     let urlPath = req.url.split('?')[0];
 
@@ -170,14 +176,14 @@ const mainServer = http.createServer((req, res) => {
     let filePath = urlPath === '/' ? '/index.html' : urlPath;
     // Strip leading slash so path.join(__dirname, ...) doesn't treat it as absolute
     filePath = filePath.replace(/^(\/|\\)/, '');
-    
+
     // If requesting an app resource, serve from apps directory
     if (filePath.startsWith('apps/')) {
         filePath = path.join(__dirname, filePath);
     } else {
         filePath = path.join(__dirname, filePath);
     }
-    
+
     console.log(`[${new Date().toISOString()}] MAIN GET ${req.url} -> ${filePath}`);
 
     // Get file extension
@@ -225,7 +231,7 @@ const mainServer = http.createServer((req, res) => {
 // ============================================
 function handleMqttApi(req, res) {
     const urlPath = req.url;
-    
+
     res.setHeader('Content-Type', 'application/json');
 
     // GET /api/mqtt/status - Get MQTT connection status
@@ -424,6 +430,115 @@ function handlePackApi(req, res) {
 
 
 // ============================================
+// APPS API - Returns list of all apps from apps directory
+// ============================================
+function handleAppsApi(req, res) {
+    res.setHeader('Content-Type', 'application/json');
+
+    if (req.method !== 'GET') {
+        res.writeHead(405);
+        res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
+        return;
+    }
+
+    try {
+        const appsDir = path.join(__dirname, 'apps');
+
+        // Read all directories in apps folder
+        const appDirs = fs.readdirSync(appsDir, { withFileTypes: true })
+            .filter(dirent => dirent.isDirectory())
+            .map(dirent => dirent.name);
+
+        const apps = [];
+
+        for (const appId of appDirs) {
+            const appPath = path.join(appsDir, appId);
+            const appInfoPath = path.join(appPath, 'appinfo.spixi');
+
+            // Skip if appinfo.spixi doesn't exist
+            if (!fs.existsSync(appInfoPath)) {
+                console.warn(`[Apps API] Skipping ${appId} - no appinfo.spixi found`);
+                continue;
+            }
+
+            try {
+                // Read and parse appinfo.spixi
+                const appInfoContent = fs.readFileSync(appInfoPath, 'utf8');
+                const appInfo = parseAppInfo(appInfoContent);
+
+                // Construct app object
+                const app = {
+                    id: appInfo.id || appId,
+                    name: appInfo.name || appId,
+                    version: appInfo.version || '1.0.0',
+                    icon: getAppIcon(appInfo),
+                    description: appInfo.description || `${appInfo.name || appId} mini app`,
+                    url: `../apps/${appId}/app/index.html`,
+                    zip: `../packed/${appInfo.name ? appInfo.name.toLowerCase().replace(/\s+/g, '-') : appId}.zip`,
+                    devMode: false
+                };
+
+                apps.push(app);
+            } catch (err) {
+                console.error(`[Apps API] Error processing ${appId}:`, err.message);
+            }
+        }
+
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, apps }));
+    } catch (err) {
+        console.error('[Apps API] Error:', err);
+        res.writeHead(500);
+        res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+}
+
+// Parse appinfo.spixi file (key=value format)
+function parseAppInfo(content) {
+    const lines = content.split('\n');
+    const appInfo = {};
+
+    for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || trimmedLine.startsWith('#')) continue;
+
+        const [key, ...valueParts] = trimmedLine.split('=');
+        if (key && valueParts.length > 0) {
+            const value = valueParts.join('=').trim();
+            appInfo[key.trim()] = value;
+        }
+    }
+
+    return appInfo;
+}
+
+// Get icon for app based on name or use default
+function getAppIcon(appInfo) {
+    const name = (appInfo.name || '').toLowerCase();
+
+    // Icon mapping based on app name
+    const iconMap = {
+        'pong': '🏓',
+        'tic tac toe': '⭕',
+        'tictactoe': '⭕',
+        'whiteboard': '🎨',
+        'video test': '📹',
+        'gate control': '🚪',
+        'auth': '🔐',
+        'mini apps test': '🧪',
+        'ai assistant': '🤖',
+        'doom': '👾',
+        'coinflip': '🪙',
+        'contrarun': '🏃',
+        'contrarun2': '🏃'
+    };
+
+    return iconMap[name] || '📱';
+}
+
+
+
+// ============================================
 // DEV SERVER - Serves mini app HTML and resources
 // ============================================
 const devServer = http.createServer((req, res) => {
@@ -479,7 +594,7 @@ const devServer = http.createServer((req, res) => {
 
         // Get file extension
         const ext = path.extname(resourcePath);
-        
+
         // MIME types
         const mimeTypes = {
             '.html': 'text/html',
