@@ -9,5 +9,5 @@ minUsers =
 maxUsers = 4
 protocols = 
 contentUrl = doom.zip
-checksum = c81290c08524bddac5301a80ce14feddecc3683d9b6938aa9437261f6c3ea95c
+checksum = 62847c6a6626fc3fe07ae1028a8187f7efa51fd138ab2fa771af71ea3df4e3a1
 contentSize = 3761925
