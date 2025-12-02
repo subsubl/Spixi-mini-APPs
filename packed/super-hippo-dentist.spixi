@@ -9,5 +9,5 @@ minUsers = 1
 maxUsers = 1
 protocols = 
 contentUrl = super-hippo-dentist.zip
-checksum = 09c89737b21cbb33ee0527ab7027b28a6e07af3d2bb3842c238f314466cd19bc
+checksum = a899f6ad189e1f1a785ecf5c702760c383c11a0815fd5d543a84003ee9e7b8e2
 contentSize = 3078425
