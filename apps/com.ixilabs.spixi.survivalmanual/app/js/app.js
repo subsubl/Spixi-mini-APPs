@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error(error);
-            contentContainer.innerHTML = '<p>Error loading content.</p>';
+            contentContainer.innerHTML = `<p>Error loading content: ${error.message}</p>`;
         }
     }
 
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error(error);
-            menuContainer.innerHTML = '<p>Error loading menu.</p>';
+            menuContainer.innerHTML = `<p>Error loading menu: ${error.message}</p>`;
         }
     }
 
