@@ -10,12 +10,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let soreToothIndex = -1;
     let isGameOver = false;
 
+    console.log("App initialized");
+
     // Initialize Spixi SDK
-    if (typeof SpixiAppSdk !== 'undefined') {
-        SpixiAppSdk.init();
+    try {
+        if (typeof SpixiAppSdk !== 'undefined') {
+            SpixiAppSdk.init();
+            console.log("Spixi SDK initialized");
+        } else {
+            console.log("Spixi SDK not found");
+        }
+    } catch (e) {
+        console.error("Error initializing Spixi SDK:", e);
     }
 
     function initGame() {
+        console.log("Starting game...");
         isGameOver = false;
         soreToothIndex = Math.floor(Math.random() * TOTAL_TEETH);
 
