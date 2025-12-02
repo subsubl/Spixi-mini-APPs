@@ -1,7 +1,7 @@
-id=com.ixilabs.spixi.survivalmanual
+id=com.baracuda.spixi.survivalmanual
 name=SurvivalManual
 version=1.0.1
-author=ligi
+author=baracuda
 description=Survival Manual for Spixi
 keywords=survival,manual,guide
 main=index.html

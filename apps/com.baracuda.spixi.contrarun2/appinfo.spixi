@@ -1,9 +1,0 @@
-caVersion = 0
-id = com.baracuda.spixi.contrarun2
-publisher = Baracuda
-name = Contra Run 2
-version = 1.0.0
-capabilities = multiUser
-maxUsers = 2
-minUsers = 1
-icon = icon.png
