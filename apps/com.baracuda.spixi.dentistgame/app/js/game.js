@@ -1,7 +1,7 @@
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: window.innerWidth,
+    height: window.innerHeight,
     parent: 'game-container',
     backgroundColor: '#87CEEB',
     physics: {
@@ -12,7 +12,7 @@ const config = {
         }
     },
     scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
     scene: {
@@ -105,29 +105,38 @@ function preload() {
 function create() {
     soundManager = new SoundManager(this);
 
-    // Create a simple level procedurally since we don't have a tilemap editor output
+    // Dynamic World Bounds based on screen size, but keep minimum playable area
+    const worldWidth = Math.max(window.innerWidth, 800);
+    const worldHeight = Math.max(window.innerHeight, 600);
+    this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
+
+    // Create a simple level procedurally
     platforms = this.physics.add.staticGroup();
 
-    // Ground
-    for (let x = 0; x < 800; x += 32) {
-        platforms.create(x + 16, 584, 'tiles').setScale(1).setCrop(0, 0, 32, 32); // Assuming first tile is ground
+    // Ground (spanning the whole world width)
+    for (let x = 0; x < worldWidth; x += 32) {
+        platforms.create(x + 16, worldHeight - 16, 'tiles').setScale(1).setCrop(0, 0, 32, 32);
     }
 
-    // Platforms
-    platforms.create(600, 400, 'tiles').setScale(1);
-    platforms.create(50, 250, 'tiles').setScale(1);
-    platforms.create(750, 220, 'tiles').setScale(1);
+    // Platforms (Relative positions)
+    platforms.create(worldWidth * 0.75, worldHeight * 0.66, 'tiles').setScale(1);
+    platforms.create(worldWidth * 0.1, worldHeight * 0.4, 'tiles').setScale(1);
+    platforms.create(worldWidth * 0.9, worldHeight * 0.35, 'tiles').setScale(1);
 
     // Player
-    player = this.physics.add.sprite(100, 450, 'player');
+    player = this.physics.add.sprite(100, worldHeight - 100, 'player');
     player.setBounce(0.2);
     player.setCollideWorldBounds(true);
-    player.setScale(0.15); // Scale down the hippo image
+    player.setScale(0.15);
     player.isAttacking = false;
+
+    // Camera
+    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+    this.cameras.main.startFollow(player, true, 0.05, 0.05);
 
     // Enemies
     enemies = this.physics.add.group();
-    const enemy = enemies.create(400, 500, 'enemy');
+    const enemy = enemies.create(worldWidth * 0.5, worldHeight - 100, 'enemy');
     enemy.setBounce(1);
     enemy.setCollideWorldBounds(true);
     enemy.setVelocityX(100);
