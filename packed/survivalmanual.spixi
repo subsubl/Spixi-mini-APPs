@@ -1,5 +1,5 @@
 caVersion = 0
-id = com.ixilabs.spixi.survivalmanual
+id = com.baracuda.spixi.survivalmanual
 publisher = 
 name = SurvivalManual
 version = 1.0.1
@@ -9,5 +9,5 @@ minUsers = 1
 maxUsers = 1
 protocols = 
 contentUrl = survivalmanual.zip
-checksum = 40c5434d69301306fd5365d3b30dffd83c940fdfb8186546d5867f5b14819dc6
+checksum = de3437661e9aa1940603d66c59e0352b3c6d213d92be6a54e5c768b95389757a
 contentSize = 2857704
