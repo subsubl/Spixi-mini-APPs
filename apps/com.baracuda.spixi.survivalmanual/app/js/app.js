@@ -76,113 +76,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    // Improved List Handling (Post-processing)
-    function fixLists(html) {
-        // This is still a bit hacky but better than nothing
-        return html.replace(/<\/ul>\s*<ul>/gim, '');
-    }
-
-    async function loadContent(filename) {
-        try {
-            // Ensure filename ends with .md
-            if (!filename.endsWith('.md')) {
-                filename += '.md';
-            }
-
-            const response = await fetch(`./data/${filename}`);
-            if (!response.ok) throw new Error(`Failed to load content: ${response.status} ${response.statusText}`);
-            const text = await response.text();
-            const html = parseMarkdown(text);
-            contentContainer.innerHTML = fixLists(html);
-
-            // Scroll to top
-            contentContainer.scrollTop = 0;
-
-            // Re-attach event listeners to new links
-            const links = contentContainer.querySelectorAll('a[data-link]');
-            links.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const target = link.getAttribute('data-link');
-                    loadContent(target);
-                    if (window.innerWidth <= 768) {
-                        sidebar.classList.remove('open');
-                    }
-                });
-            });
-
-        } catch (error) {
-            console.error(error);
-            contentContainer.innerHTML = `<p>Error loading content: ${error.message}</p>`;
-        }
-    }
-
-    async function buildMenu() {
-        try {
-            const response = await fetch('./data/Home.md');
-            if (!response.ok) throw new Error(`Failed to load Home.md: ${response.status} ${response.statusText}`);
-            const text = await response.text();
-
-            // Parse Home.md specifically to build the menu
-            // We expect lines like ### [Title](Filename)
-            const lines = text.split('\n');
-            const ul = document.createElement('ul');
-            const menuItems = []; // Store items for search
-
-            lines.forEach(line => {
-                const match = line.match(/\[(.*?)\]\((.*?)\)/);
-                if (match) {
-                    const title = match[1];
-                    const filename = match[2];
-
-                    const li = document.createElement('li');
-                    const a = document.createElement('a');
-                    a.textContent = title;
-                    a.href = '#';
-                    a.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        loadContent(filename);
-
-                        // Update active state
-                        document.querySelectorAll('#menu a').forEach(el => el.classList.remove('active'));
-                        a.classList.add('active');
-
-                        if (window.innerWidth <= 768) {
-                            sidebar.classList.remove('open');
-                        }
-                    });
-                    li.appendChild(a);
-                    ul.appendChild(li);
-
-                    menuItems.push({ li, title: title.toLowerCase() });
-                }
-            });
-
-            menuContainer.appendChild(ul);
-
-            // Search Functionality
-            const searchInput = document.getElementById('search-input');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    const term = e.target.value.toLowerCase();
-                    menuItems.forEach(item => {
-                        if (item.title.includes(term)) {
-                            item.li.style.display = '';
-                        } else {
-                            item.li.style.display = 'none';
-                        }
+    item.li.style.display = 'none';
+}
                     });
                 });
             }
 
-            // Load Introduction by default
-            loadContent('Introduction');
+// Load Introduction by default
+loadContent('Introduction');
 
         } catch (error) {
-            console.error(error);
-            menuContainer.innerHTML = `<p>Error loading menu: ${error.message}</p>`;
-        }
+    console.error(error);
+    menuContainer.innerHTML = `<p>Error loading menu: ${error.message}</p>`;
+}
     }
 
-    buildMenu();
+buildMenu();
 });
