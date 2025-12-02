@@ -1,0 +1,13 @@
+caVersion = 0
+id = com.ixilabs.spixi.survivalmanual
+publisher = 
+name = SurvivalManual
+version = 1.0.0
+capabilities = 
+image = survivalmanual.png
+minUsers = 
+maxUsers = 
+protocols = 
+contentUrl = survivalmanual.zip
+checksum = b051cbf9139cd7d40d3f8a2d74c453e83ccd7f0e2955aa807523e1fcbe2588bd
+contentSize = 2855720
