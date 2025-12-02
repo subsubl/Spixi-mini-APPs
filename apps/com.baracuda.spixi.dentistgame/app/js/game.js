@@ -110,19 +110,6 @@ function create() {
     const worldHeight = Math.max(window.innerHeight, 600);
     this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
 
-    // Create a simple level procedurally
-    platforms = this.physics.add.staticGroup();
-
-    // Ground (spanning the whole world width)
-    for (let x = 0; x < worldWidth; x += 32) {
-        platforms.create(x + 16, worldHeight - 16, 'tiles').setScale(1).setCrop(0, 0, 32, 32);
-    }
-
-    // Platforms (Relative positions)
-    platforms.create(worldWidth * 0.75, worldHeight * 0.66, 'tiles').setScale(1);
-    platforms.create(worldWidth * 0.1, worldHeight * 0.4, 'tiles').setScale(1);
-    platforms.create(worldWidth * 0.9, worldHeight * 0.35, 'tiles').setScale(1);
-
     // Player
     player = this.physics.add.sprite(100, worldHeight - 100, 'player');
     player.setBounce(0.2);
@@ -133,35 +120,16 @@ function create() {
     // Camera
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
     this.cameras.main.startFollow(player, true, 0.05, 0.05);
+    this.cameras.main.setZoom(0.6);
 
-    // Enemies
-    enemies = this.physics.add.group();
-    const enemy = enemies.create(worldWidth * 0.5, worldHeight - 100, 'enemy');
-    enemy.setBounce(1);
-    enemy.setCollideWorldBounds(true);
-    enemy.setVelocityX(100);
-    enemy.setScale(0.1);
+    // Input
+    cursors = this.input.keyboard.createCursorKeys();
+    this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.CTRL);
 
-    // Collectibles
-    collectibles = this.physics.add.group({
-        key: 'collectible',
-        repeat: 5,
-        setXY: { x: 12, y: 0, stepX: 140 }
-    });
-
-    collectibles.children.iterate(function (child) {
-        child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
-        child.setScale(0.1);
-    });
-
-    // Colliders
-    this.physics.add.collider(player, platforms);
-    this.physics.add.collider(enemies, platforms);
-    this.physics.add.collider(collectibles, platforms);
-
-    // Overlaps
-    this.physics.add.overlap(player, collectibles, collectItem, null, this);
-    this.physics.add.collider(player, enemies, hitEnemy, null, this);
+    // Score
+    scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
+    scoreText.setScrollFactor(0); // Fix score to screen
 
     // Input
     cursors = this.input.keyboard.createCursorKeys();
@@ -173,6 +141,104 @@ function create() {
 
     // Initialize DOOM-style Joystick
     initJoystick();
+
+    // Start Level 1
+    startLevel(this, 1);
+}
+
+let currentLevel = 1;
+
+function startLevel(scene, level) {
+    currentLevel = level;
+
+    // Clear existing groups if they exist
+    if (platforms) platforms.clear(true, true);
+    if (enemies) enemies.clear(true, true);
+    if (collectibles) collectibles.clear(true, true);
+
+    // Re-create groups
+    platforms = scene.physics.add.staticGroup();
+    enemies = scene.physics.add.group();
+    collectibles = scene.physics.add.group();
+
+    const worldWidth = Math.max(window.innerWidth, 800);
+    const worldHeight = Math.max(window.innerHeight, 600);
+
+    // --- LEVEL 1: The Gum Gardens (Horizontal) ---
+    if (level === 1) {
+        scene.physics.world.setBounds(0, 0, worldWidth, worldHeight);
+        scene.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+
+        // Ground
+        for (let x = 0; x < worldWidth; x += 32) {
+            platforms.create(x + 16, worldHeight - 16, 'tiles').setScale(1).setCrop(0, 0, 32, 32);
+        }
+
+        // Platforms
+        platforms.create(worldWidth * 0.75, worldHeight * 0.66, 'tiles').setScale(1);
+        platforms.create(worldWidth * 0.1, worldHeight * 0.4, 'tiles').setScale(1);
+        platforms.create(worldWidth * 0.9, worldHeight * 0.35, 'tiles').setScale(1);
+
+        // Player Start
+        player.setPosition(100, worldHeight - 100);
+
+        // Enemies
+        const enemy = enemies.create(worldWidth * 0.5, worldHeight - 100, 'enemy');
+        enemy.setBounce(1);
+        enemy.setCollideWorldBounds(true);
+        enemy.setVelocityX(100);
+        enemy.setScale(0.1);
+
+        // Collectibles
+        for (let i = 0; i < 5; i++) {
+            collectibles.create(200 + i * 150, 0, 'collectible').setScale(0.1).setBounceY(0.5);
+        }
+    }
+
+    // --- LEVEL 2: The Molar Mountains (Vertical) ---
+    else if (level === 2) {
+        // Taller world for verticality
+        const levelHeight = worldHeight * 2;
+        scene.physics.world.setBounds(0, 0, worldWidth, levelHeight);
+        scene.cameras.main.setBounds(0, 0, worldWidth, levelHeight);
+
+        // Ground
+        for (let x = 0; x < worldWidth; x += 32) {
+            platforms.create(x + 16, levelHeight - 16, 'tiles').setScale(1).setCrop(0, 0, 32, 32);
+        }
+
+        // Vertical Platforms (Zig-Zag up)
+        for (let i = 1; i < 6; i++) {
+            const x = (i % 2 === 0) ? worldWidth * 0.2 : worldWidth * 0.8;
+            const y = levelHeight - (i * 200);
+            platforms.create(x, y, 'tiles').setScale(1);
+
+            // Add enemy on some platforms
+            if (i % 2 !== 0) {
+                const enemy = enemies.create(x, y - 50, 'enemy');
+                enemy.setBounce(1);
+                enemy.setCollideWorldBounds(true);
+                enemy.setVelocityX(50);
+                enemy.setScale(0.1);
+            }
+
+            // Add collectible
+            collectibles.create(x, y - 80, 'collectible').setScale(0.1).setBounceY(0.5);
+        }
+
+        // Goal Platform at top
+        platforms.create(worldWidth * 0.5, 100, 'tiles').setScale(1);
+
+        // Player Start (Bottom)
+        player.setPosition(100, levelHeight - 100);
+    }
+
+    // Colliders
+    scene.physics.add.collider(player, platforms);
+    scene.physics.add.collider(enemies, platforms);
+    scene.physics.add.collider(collectibles, platforms);
+    scene.physics.add.overlap(player, collectibles, collectItem, null, scene);
+    scene.physics.add.collider(player, enemies, hitEnemy, null, scene);
 }
 
 function update() {
@@ -237,6 +303,30 @@ function update() {
             child.setVelocityX(-100);
         }
     });
+
+    // Level Transition Logic
+    if (currentLevel === 1) {
+        // If player reaches right edge
+        if (player.x > this.physics.world.bounds.width - 50) {
+            startLevel(this, 2);
+        }
+    } else if (currentLevel === 2) {
+        // If player reaches top (Goal)
+        if (player.y < 150) {
+            // Win Condition for now
+            this.physics.pause();
+            scoreText.setText('YOU WIN! Score: ' + score);
+            scoreText.setTint(0x00ff00);
+            gameOver = true;
+
+            this.input.on('pointerdown', () => {
+                this.scene.restart();
+                gameOver = false;
+                score = 0;
+                currentLevel = 1;
+            });
+        }
+    }
 }
 
 function collectItem(player, collectible) {
