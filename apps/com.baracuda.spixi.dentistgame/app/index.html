@@ -4,37 +4,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Happy Hippo Dentist</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>Super Hippo Dentist</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="game-container">
-        <div id="hippo-container">
-            <img id="hippo-base" src="img/hippo_open.png" alt="Hippo">
-            <div id="teeth-container">
-                <!-- Teeth will be injected here by JS -->
-            </div>
-        </div>
-
-        <div id="ui-layer">
-            <div id="start-screen" class="overlay">
-                <h1>Happy Hippo Dentist</h1>
-                <p>Find the sore tooth!</p>
-                <button id="start-btn" class="btn">Play</button>
-            </div>
-
-            <div id="game-over-screen" class="overlay hidden">
-                <h1>Chomp!</h1>
-                <p>You found the sore tooth!</p>
-                <button id="restart-btn" class="btn">Play Again</button>
-            </div>
-        </div>
-    </div>
+    <div id="game-container"></div>
 
     <script src="js/spixi-tools.js"></script>
     <script src="js/spixi-app-sdk.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/phaser.min.js"></script>
+    <script src="js/game.js"></script>
 </body>
 
 </html>

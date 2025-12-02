@@ -1,0 +1,13 @@
+caVersion = 0
+id = com.baracuda.spixi.dentistgame
+publisher = 
+name = Super Hippo Dentist
+version = 1.0.0
+capabilities = singleUser
+image = super-hippo-dentist.png
+minUsers = 1
+maxUsers = 1
+protocols = 
+contentUrl = super-hippo-dentist.zip
+checksum = 09c89737b21cbb33ee0527ab7027b28a6e07af3d2bb3842c238f314466cd19bc
+contentSize = 3078425
