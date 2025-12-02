@@ -1,0 +1,13 @@
+caVersion = 0
+id = com.baracuda.spixi.dentistgame
+publisher = 
+name = Klara's Birthday Mystery
+version = 3.0.0
+capabilities = singleUser
+image = klara's-birthday-mystery.png
+minUsers = 1
+maxUsers = 1
+protocols = 
+contentUrl = klara's-birthday-mystery.zip
+checksum = 4accb567f06a9af4ff50d54b560266df452d8f585d80898f33e71ced335d7f80
+contentSize = 3084974

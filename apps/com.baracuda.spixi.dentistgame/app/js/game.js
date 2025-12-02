@@ -432,21 +432,6 @@ storyNodes.realization1 = { text: `You pause, evidence in hand. A rose. A heart.
                     this.choiceButtons[i].style.display = 'none';
                 }
             }
-
-            this.updateInventory();
-        }
-
-    typeWriter(text, index) {
-            if (index < text.length) {
-                this.storyText.innerHTML += text.charAt(index);
-                setTimeout(() => this.typeWriter(text, index + 1), 20);
-            }
-        }
-
-    makeChoice(choiceIndex) {
-            const node = storyNodes[gameState.currentNode];
-            const choice = node.choices[choiceIndex];
-
             if (!choice) return;
 
             // Add to inventory if specified
