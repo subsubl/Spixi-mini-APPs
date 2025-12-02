@@ -83,18 +83,120 @@
 
                 <!-- Row 9 -->
                 <div class="key-row">
-                    <button class="btn btn-sci" data-key="ON">ON</button>
-                    <button class="btn btn-num" data-key="0">0</button>
-                    <button class="btn btn-num" data-key=".">.</button>
-                    <button class="btn btn-num" data-key="-">(-)</button>
-                    <button class="btn btn-enter" data-key="Enter">ENTER</button>
-                </div>
-                if (kalk) {
-                kalk.setAttribute("buttonpanel", "true");
-                kalk.setAttribute("numberrow", "true");
-                }
-                }
-                </script>
-</body>
+                    <!DOCTYPE html>
+                    <html lang="en">
 
-</html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Kalker</title>
+                        <link rel="stylesheet" href="kalk.css">
+                        <link rel="stylesheet" href="fonts.css">
+                    </head>
+
+                    <body>
+                        <div class="calculator-container">
+                            <div class="calculator-body">
+                                <div class="screen-container">
+                                    <kalk-calculator autofocus="true">
+                                        <console-line>kalker</console-line>
+                                        <console-line>
+                                            <span class="hint">Type 'help' for instructions.</span>
+                                        </console-line>
+                                    </kalk-calculator>
+                                </div>
+
+                                <div class="keypad">
+                                    <!-- Row 1: Graphing Keys -->
+                                    <div class="key-row top-row">
+                                        <button class="btn btn-graph" data-key="Y=">Y=</button>
+                                        <button class="btn btn-graph" data-key="WINDOW">WINDOW</button>
+                                        <button class="btn btn-graph" data-key="ZOOM">ZOOM</button>
+                                        <button class="btn btn-graph" data-key="TRACE">TRACE</button>
+                                        <button class="btn btn-graph" data-key="GRAPH">GRAPH</button>
+                                    </div>
+
+                                    <!-- Row 2: Scientific -->
+                                    <div class="key-row">
+                                        <button class="btn btn-sci" data-key="2nd">2nd</button>
+                                    </div>
+
+                                    <!-- Row 4 -->
+                                    <div class="key-row">
+                                        <button class="btn btn-sci" data-key="^-1">x⁻¹</button>
+                                        <button class="btn btn-sci" data-key="sin(">SIN</button>
+                                        <button class="btn btn-sci" data-key="cos(">COS</button>
+                                        <button class="btn btn-sci" data-key="tan(">TAN</button>
+                                        <button class="btn btn-sci" data-key="^">^</button>
+                                    </div>
+
+                                    <!-- Row 5 -->
+                                    <div class="key-row">
+                                        <button class="btn btn-sci" data-key="^2">x²</button>
+                                        <button class="btn btn-sci" data-key=",">,</button>
+                                        <button class="btn btn-sci" data-key="(">(</button>
+                                        <button class="btn btn-sci" data-key=")">)</button>
+                                        <button class="btn btn-op" data-key="/">÷</button>
+                                    </div>
+
+                                    <!-- Row 6 -->
+                                    <div class="key-row">
+                                        <button class="btn btn-sci" data-key="log(">LOG</button>
+                                        <button class="btn btn-num" data-key="7">7</button>
+                                        <button class="btn btn-num" data-key="8">8</button>
+                                        <button class="btn btn-num" data-key="9">9</button>
+                                        <button class="btn btn-op" data-key="*">×</button>
+                                    </div>
+
+                                    <!-- Row 7 -->
+                                    <div class="key-row">
+                                        <button class="btn btn-sci" data-key="ln(">LN</button>
+                                        <button class="btn btn-num" data-key="4">4</button>
+                                        <button class="btn btn-num" data-key="5">5</button>
+                                        <button class="btn btn-num" data-key="6">6</button>
+                                        <button class="btn btn-op" data-key="-">-</button>
+                                    </div>
+
+                                    <!-- Row 8 -->
+                                    <div class="key-row">
+                                        <button class="btn btn-sci" data-key="STO">STO</button>
+                                        <button class="btn btn-num" data-key="1">1</button>
+                                        <button class="btn btn-num" data-key="2">2</button>
+                                        <button class="btn btn-num" data-key="3">3</button>
+                                        <button class="btn btn-op" data-key="+">+</button>
+                                    </div>
+
+                                    <!-- Row 9 -->
+                                    <div class="key-row">
+                                        <button class="btn btn-sci" data-key="ON">ON</button>
+                                        <button class="btn btn-num" data-key="0">0</button>
+                                        <button class="btn btn-num" data-key=".">.</button>
+                                        <button class="btn btn-num" data-key="-">(-)</button>
+                                        <button class="btn btn-enter" data-key="Enter">ENTER</button>
+                                    </div>
+                                </div>
+
+                                <!-- Debug Overlay -->
+                                <script src="js/debug-overlay.js"></script>
+                                <!-- Spixi SDK -->
+                                <script src="js/spixi.js"></script>
+                                <!-- App Logic -->
+                                <script src="js/app.js"></script>
+                                <!-- Fetch Polyfill for WASM -->
+                                <script src="js/fetch-polyfill.js"></script>
+                                <!-- Kalker Bundle -->
+                                <script src="bundle.js"></script>
+
+                                <script>
+                                    // Mobile/Touch adjustments
+                                    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
+                                        const kalk = document.querySelector("kalk-calculator");
+                                        if (kalk) {
+                                            kalk.setAttribute("buttonpanel", "true");
+                                            kalk.setAttribute("numberrow", "true");
+                                        }
+                                    }
+                                </script>
+                    </body>
+
+                    </html>
