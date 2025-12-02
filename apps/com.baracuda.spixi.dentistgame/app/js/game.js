@@ -349,3 +349,188 @@ class WaitingRoomScene extends Phaser.Scene {
         });
     }
 }
+
+class ReceptionScene extends BaseScene {
+    constructor() { super('ReceptionScene', 'Reception Desk'); }
+    createRoom() {
+        this.add.rectangle(160, 120, 320, 240, 0x332222);
+        const book = this.add.rectangle(160, 160, 40, 30, 0xffffff);
+        this.interactionManager.register(book, "The Appointment Book.", () => {
+            this.dialogueManager.show("Last entry: 'Dr. Plaque - 2:30 PM'. Strange...");
+        });
+    }
+    createNavigation() {
+        this.addNavArrow(20, 120, "<", 'WaitingRoomScene');
+        this.addNavArrow(300, 120, ">", 'HallwayScene');
+    }
+}
+
+class HallwayScene extends BaseScene {
+    constructor() { super('HallwayScene', 'The Hallway'); }
+    createRoom() {
+        this.add.rectangle(160, 120, 320, 240, 0x111111);
+        this.add.text(60, 100, "OP 1", { fontSize: '10px', fill: '#555' });
+        this.add.text(260, 100, "OP 2", { fontSize: '10px', fill: '#555' });
+        this.add.text(160, 100, "X-RAY", { fontSize: '10px', fill: '#555' });
+    }
+    createNavigation() {
+        this.addNavArrow(20, 120, "<", 'ReceptionScene');
+        this.addNavArrow(60, 160, "^", 'Operatory1Scene');
+        this.addNavArrow(260, 160, "^", 'Operatory2Scene');
+        this.addNavArrow(160, 160, "^", 'XRayScene');
+        this.addNavArrow(300, 120, ">", 'LabScene');
+    }
+}
+
+class Operatory1Scene extends BaseScene {
+    constructor() { super('Operatory1Scene', 'Operatory 1 (Crime Scene)'); }
+    createRoom() {
+        this.add.rectangle(160, 120, 320, 240, 0x223344);
+        const pedestal = this.add.rectangle(160, 140, 40, 60, 0x888888);
+        this.interactionManager.register(pedestal, "The display case.", () => {
+            this.dialogueManager.show("The Golden Molar is gone! Only a sticky residue remains.");
+        });
+        const prints = this.add.circle(160, 200, 10, 0x553311);
+        this.interactionManager.register(prints, "Muddy footprints.", () => {
+            this.dialogueManager.show("Size 12. Work boots. Dr. Plaque wears loafers.");
+        });
+    }
+    createNavigation() {
+        this.addNavArrow(160, 220, "v", 'HallwayScene');
+    }
+}
+
+class Operatory2Scene extends BaseScene {
+    constructor() { super('Operatory2Scene', 'Operatory 2 (Construction)'); }
+    createRoom() {
+        this.add.rectangle(160, 120, 320, 240, 0x444433);
+        const screwdriver = this.add.rectangle(200, 180, 20, 5, 0xffff00);
+        if (!gameState.inventory.includes('Screwdriver')) {
+            this.interactionManager.register(screwdriver, "A screwdriver.", () => {
+                this.inventoryManager.addItem('Screwdriver');
+                screwdriver.destroy();
+                this.dialogueManager.show("Got the Screwdriver.");
+            });
+        }
+    }
+    createNavigation() {
+        this.addNavArrow(160, 220, "v", 'HallwayScene');
+    }
+}
+
+class XRayScene extends BaseScene {
+    constructor() { super('XRayScene', 'X-Ray Room'); }
+    createRoom() {
+        this.add.rectangle(160, 120, 320, 240, 0x112211);
+        const machine = this.add.rectangle(160, 100, 80, 80, 0xcccccc);
+        this.interactionManager.register(machine, "The X-Ray viewer.", () => {
+            if (gameState.inventory.includes('X-Ray Film')) {
+                this.dialogueManager.show("I placed the film. It shows... a key hidden in a molar!");
+                if (!gameState.inventory.includes('Small Key')) {
+                    gameState.inventory.push('Small Key');
+                    this.inventoryManager.render();
+                    this.dialogueManager.show("I found a Small Key taped to the back of the viewer.");
+                }
+            } else {
+                this.dialogueManager.show("It's bright. I need a film to look at.");
+            }
+        });
+    }
+    createNavigation() {
+        this.addNavArrow(160, 220, "v", 'HallwayScene');
+    }
+}
+
+class SterilizationScene extends BaseScene {
+    constructor() { super('SterilizationScene', 'Sterilization Room'); }
+    createRoom() {
+        this.add.rectangle(160, 120, 320, 240, 0xffffff);
+        const autoclave = this.add.rectangle(160, 140, 60, 40, 0xaaaaaa);
+        this.interactionManager.register(autoclave, "The Autoclave. It's stuck.", () => {
+            if (gameState.inventory.includes('Screwdriver')) {
+                this.dialogueManager.show("I pried it open with the screwdriver.");
+                if (!gameState.inventory.includes('Scalpel')) {
+                    this.inventoryManager.addItem('Scalpel');
+                    this.dialogueManager.show("Found a Scalpel inside.");
+                }
+            } else {
+                this.dialogueManager.show("It's jammed tight. I need a tool to pry it open.");
+            }
+        });
+    }
+    createNavigation() {
+        this.addNavArrow(20, 120, "<", 'HallwayScene');
+    }
+}
+
+class OfficeScene extends BaseScene {
+    constructor() {
+        super('OfficeScene', 'Dr. Decay\\'s Office'); }
+    createRoom() {
+            this.add.rectangle(160, 120, 320, 240, 0x440000);
+            const safe = this.add.rectangle(250, 180, 40, 40, 0x000000);
+            this.interactionManager.register(safe, "A wall safe.", () => {
+                if (gameState.inventory.includes('Small Key')) {
+                    this.dialogueManager.show("The key fits! Inside is... Dr. Plaque's diary? 'I will steal the molar tonight!'");
+                } else {
+                    this.dialogueManager.show("It's locked.");
+                }
+            });
+            const film = this.add.rectangle(120, 180, 20, 20, 0x333333);
+            if(!gameState.inventory.includes('X-Ray Film')) {
+            this.interactionManager.register(film, "An X-Ray Film.", () => {
+                this.inventoryManager.addItem('X-Ray Film');
+                film.destroy();
+                this.dialogueManager.show("Picked up the X-Ray Film.");
+            });
+        }
+    }
+    createNavigation() {
+        this.addNavArrow(20, 120, "<", 'HallwayScene');
+    }
+}
+
+class LabScene extends BaseScene {
+    constructor() { super('LabScene', 'The Lab'); }
+    createRoom() {
+        this.add.rectangle(160, 120, 320, 240, 0x555555);
+        const beaker = this.add.rectangle(160, 160, 20, 30, 0x00ff00);
+        this.interactionManager.register(beaker, "Bubbling green liquid.", () => {
+            this.dialogueManager.show("Acid. Dangerous.");
+            if (!gameState.inventory.includes('Acid')) {
+                this.inventoryManager.addItem('Acid');
+            }
+        });
+    }
+    createNavigation() {
+        this.addNavArrow(20, 120, "<", 'HallwayScene');
+        this.addNavArrow(300, 120, ">", 'ClosetScene');
+    }
+}
+
+class ClosetScene extends BaseScene {
+    constructor() { super('ClosetScene', 'Supply Closet'); }
+    createRoom() {
+        this.add.rectangle(160, 120, 320, 240, 0x221100);
+        const plunger = this.add.rectangle(160, 180, 10, 40, 0xff0000);
+        this.interactionManager.register(plunger, "A Plunger.", () => {
+            this.inventoryManager.addItem('Plunger');
+            plunger.destroy();
+            this.dialogueManager.show("A heavy-duty plunger.");
+        });
+        const sink = this.add.rectangle(240, 180, 40, 20, 0xffffff);
+        this.interactionManager.register(sink, "A clogged sink.", () => {
+            if (gameState.inventory.includes('Plunger')) {
+                this.dialogueManager.show("I plunged the sink... and the Golden Molar popped out! Case Closed!");
+                this.time.delayedCall(3000, () => {
+                    this.scene.start('WaitingRoomScene');
+                });
+            } else {
+                this.dialogueManager.show("It's clogged. Something shiny is stuck down there.");
+            }
+        });
+    }
+    createNavigation() {
+        this.addNavArrow(20, 120, "<", 'LabScene');
+    }
+}
