@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy | Baracuda Mini Apps</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/images/logo.png">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'spixi': '#17334F',
+                        'spixi-dark': '#F0F2F4',
+                        'accent': '#24BBFF'
+                    },
+                    fontFamily: {
+                        'lexend': ['Lexend', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+
+        .bg-pattern-overlay {
+            background-image: url('assets/images/bg-pattern.png');
+            background-repeat: repeat;
+            opacity: 0.05;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 dark:bg-[#090B0D] text-spixi dark:text-spixi-dark font-lexend flex flex-col min-h-screen">
+    <div class="fixed inset-0 bg-pattern-overlay pointer-events-none z-0"></div>
+
+    <!-- Navbar (Placeholder - will be updated consistently across pages later via JS or copy-paste, ensuring consistent menu) -->
+    <header class="bg-[#090B0D]/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-4">
+            <div class="flex items-center">
+                <a href="index.html" class="flex items-center space-x-3">
+                    <img src="assets/images/logo.png" alt="Baracuda Logo" class="h-10 w-auto">
+                    <span class="text-2xl font-bold text-white tracking-tight">Baracuda</span>
+                </a>
+                <nav class="hidden md:flex ml-10 space-x-8">
+                    <a href="index.html" class="text-gray-300 hover:text-accent transition-colors">Home</a>
+                    <a href="builder.html" class="text-gray-300 hover:text-accent transition-colors">Builder</a>
+                    <a href="howitworks.html" class="text-gray-300 hover:text-accent transition-colors">How it works</a>
+                </nav>
+            </div>
+            <!-- Hamburger Button -->
+            <button id="navbar-hamburger-btn" type="button"
+                class="md:hidden inline-flex items-center justify-center p-2 w-10 h-10 text-sm text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600">
+                <span class="sr-only">Open main menu</span>
+                <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 17 14">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M1 1h15M1 7h15M1 13h15" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Full Screen Mobile Menu Overlay -->
+    <div id="navbar-hamburger"
+        class="hidden fixed inset-0 z-[60] bg-gray-900/95 backdrop-blur-xl flex-col justify-center items-center">
+        <button id="navbar-hamburger-close" class="absolute top-6 right-6 text-gray-400 hover:text-white">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        <div class="flex flex-col md:flex-row gap-10 md:gap-40 text-center">
+            <ul class="flex flex-col gap-6">
+                <li><a href="index.html" class="text-4xl font-bold text-white hover:text-accent">Home</a></li>
+                <li><a href="builder.html" class="text-4xl font-bold text-white hover:text-accent">Builder</a></li>
+                <li><a href="howitworks.html" class="text-4xl font-bold text-white hover:text-accent">How it works</a>
+                </li>
+                <li><a href="howitworks.html#faq" class="text-4xl font-bold text-white hover:text-accent">FAQ</a></li>
+            </ul>
+            <ul class="flex flex-col gap-6">
+                <li><a href="privacy.html" class="text-4xl font-bold text-white hover:text-accent">Privacy Policy</a>
+                </li>
+                <li><a href="terms.html" class="text-4xl font-bold text-white hover:text-accent">Terms of Use</a></li>
+                <li><a href="https://www.ixian.io/" target="_blank"
+                        class="text-4xl font-bold text-white hover:text-accent">Ixian Website</a></li>
+                <li><a href="https://www.ixilabs.co.uk/" target="_blank"
+                        class="text-4xl font-bold text-white hover:text-accent">Ixi Labs Website</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <main class="flex-grow relative z-10 pt-10 pb-20">
+        <div class="pt-6 pb-4 px-4 md:px-8 max-w-7xl mx-auto">
+            <h1 class="font-lexend text-3xl md:text-5xl font-semibold text-white leading-normal text-center">
+                Privacy Policy
+            </h1>
+
+            <div class="flex flex-col gap-4 my-16 text-gray-300 max-w-4xl mx-auto text-lg leading-relaxed">
+                <p>
+                    This privacy policy (“Policy”) describes how IXI Labs Ltd. (“we”,“our”, “us”) collects, uses,
+                    shares, and stores personal information of Spixi services, including any associated features or
+                    functionalities, websites and user interfaces, as well as all content and software applications
+                    associated with our services (collectively, the “Services”).
+                </p>
+                <p>
+                    By using the Services, you accept the terms of this Policy and our Terms & Conditions (“Terms”), and
+                    consent to our collection, use, disclosure, and retention of your information as described in this
+                    Policy.
+                </p>
+
+                <h2 class="font-semibold text-2xl text-white mt-8 mb-4">Your personal information and our website</h2>
+                <p>We get information about you in a range of ways.</p>
+
+                <h3 class="font-semibold text-xl text-white mt-4">Information You Give Us.</h3>
+                <p>Information we collect from you includes:</p>
+                <ul class="list-disc pl-8 space-y-2">
+                    <li>User information, such as your name, display name, domain name or social media account handles
+                        when you sign up for use of our Services;</li>
+                    <li>Feedback and correspondence, such as information you provide in your responses to surveys, when
+                        you participate in market research activities, report a problem with Services, receive customer
+                        support or otherwise correspond with us;</li>
+                    <li>Anonymized usage information, such as information about how you use the Services and interact
+                        with us;</li>
+                </ul>
+
+                <h3 class="font-semibold text-xl text-white mt-6">Information Automatically Collected.</h3>
+                <p>We may automatically record certain information about how you use our Services (we refer to this
+                    information as “Log Data“). Log Data may include information such as a user’s Internet Protocol (IP)
+                    address, device and browser type, the pages or features of our Services which a user browsed.</p>
+
+                <h2 class="font-semibold text-2xl text-white mt-8 mb-4">How do we use the information we collect</h2>
+                <p>The data we collect is used only to the extent necessary to provide you with full scope of our
+                    services and analyze how you use our site, so we can provide you with a better experience when
+                    visiting our site in the future.</p>
+
+                <h2 class="font-semibold text-2xl text-white mt-8 mb-4">Contact us</h2>
+                <p>If you have any questions about this Privacy Policy or any of the provision, you can contact us by
+                    email: <a href="mailto:support@spixi.io"
+                        class="no-underline hover:underline text-accent">support@spixi.io</a>.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-[#090B0D] border-t border-gray-800 py-12 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
+            <p>&copy; 2025 Spixi. All rights reserved.</p>
+            <div class="mt-4 flex justify-center gap-6">
+                <a href="privacy.html" class="hover:text-accent">Privacy Policy</a>
+                <a href="terms.html" class="hover:text-accent">Terms of Use</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Hamburger Menu Logic
+        const hamburgerBtn = document.getElementById('navbar-hamburger-btn');
+        const hamburgerMenu = document.getElementById('navbar-hamburger');
+        const hamburgerClose = document.getElementById('navbar-hamburger-close');
+
+        function toggleMenu() {
+            hamburgerMenu.classList.toggle('hidden');
+            hamburgerMenu.classList.toggle('flex');
+            document.body.classList.toggle('overflow-hidden');
+        }
+
+        if (hamburgerBtn) hamburgerBtn.addEventListener('click', toggleMenu);
+        if (hamburgerClose) hamburgerClose.addEventListener('click', toggleMenu);
+
+        // Close menu when clicking a link
+        hamburgerMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (!hamburgerMenu.classList.contains('hidden')) toggleMenu();
+            });
+        });
+    </script>
+</body>
+
+</html>
