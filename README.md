@@ -1,4 +1,4 @@
-# Mini Apps Test Environment
+# <img src="assets/images/logo.png" alt="Baracuda Logo" width="60" align="top"> Baracuda Mini Apps Test Environment
 
 Local testing environment for Spixi Mini Apps. Run the packed apps directly in your browser without needing the full Spixi client.
 # Spixi Mini Apps — Test Environment
