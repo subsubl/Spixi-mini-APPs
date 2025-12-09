@@ -632,6 +632,30 @@ body::before {
     50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
 }
 
+/* Lag Indicator */
+#lag-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-left: var(--spacing-sm);
+    transition: all var(--transition-base);
+}
+
+.lag-good {
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+.lag-fair {
+    background: var(--warning);
+    box-shadow: 0 0 8px var(--warning);
+}
+
+.lag-poor {
+    background: var(--danger);
+    box-shadow: 0 0 8px var(--danger);
+}
+
 /* Canvas Wrapper */
 .canvas-wrapper {
     position: relative;
