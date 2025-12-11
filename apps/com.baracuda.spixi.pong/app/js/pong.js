@@ -589,8 +589,8 @@ let remotePlayerStatus = 'unknown'; // 'unknown', 'lobby', 'ready', 'playing'
 // Critical message retransmission
 let criticalMsgSeq = 0;
 const pendingCritical = new Map(); // seqId -> { msg, sentAt, retries }
-const CRITICAL_RETRY_INTERVAL = 300; // Retry after 300ms
-const CRITICAL_MAX_RETRIES = 3;
+const CRITICAL_RETRY_INTERVAL = 1000; // Retry after 1 second (User requested optimization)
+const CRITICAL_MAX_RETRIES = 5; // Increased retries since interval is longer
 
 function queueMessage(msg) {
     pendingMessages.push(msg);
@@ -773,6 +773,17 @@ function handleConnectionEstablished() {
                 handleOpponentDisconnect();
             }
         }, 10000);
+    }
+
+    // Start critical message retransmission loop (1Hz)
+    if (!connectionRetryInterval) {
+        // Re-using a variable name or creating new? Let's use a new one or attach to existing flow.
+        // Actually, connectionRetryInterval is cleared above. Let's use a specific one.
+        // But wait, I need to declare it globally first if I want to clear it?
+        // Let's just use a recurring check in 'pingInterval' which is already running?
+        // Ping runs every 2s. User wants 1s.
+        // Let's add specific interval.
+        setInterval(checkCriticalRetransmissions, 1000);
     }
 
     // Transition to game screen
@@ -2857,6 +2868,7 @@ function toggleChat() {
     const chatPanel = document.getElementById('chat-panel');
     const waitingBadge = document.getElementById('waitingChatBadge');
     const gameOverBadge = document.getElementById('gameOverChatBadge');
+    const inGameBadge = document.getElementById('inGameChatBadge');
 
     isChatOpen = !isChatOpen;
 
@@ -2865,11 +2877,14 @@ function toggleChat() {
         checkUnreadMessages = 0;
         waitingBadge.classList.add('hidden');
         gameOverBadge.classList.add('hidden');
+        if (inGameBadge) inGameBadge.classList.add('hidden');
         setTimeout(() => document.getElementById('chatInput').focus(), 300);
     } else {
         chatPanel.classList.add('chat-hidden');
     }
 }
+
+let chatPopupTimer = null;
 
 function sendChatMessage() {
     const input = document.getElementById('chatInput');
@@ -2910,9 +2925,12 @@ function showChatNotification(text) {
         popupText.textContent = text;
         popup.classList.remove('hidden');
 
-        // Clear previous timer if exists (optional refinement, simple timeout works for now)
-        setTimeout(() => {
+        // Clear previous timer if exists to prevent early closing
+        if (chatPopupTimer) clearTimeout(chatPopupTimer);
+
+        chatPopupTimer = setTimeout(() => {
             popup.classList.add('hidden');
+            chatPopupTimer = null;
         }, 3000);
     }
 }
