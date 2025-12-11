@@ -1117,11 +1117,9 @@ function gameLoop(timestamp) {
                     // Ball owner on right
                     gameState.ball.x = CANVAS_WIDTH - 20 - PADDLE_WIDTH - BALL_SIZE;
                     gameState.ball.y = gameState.localPaddle.y + PADDLE_HEIGHT / 2;
-                } else {
-                    // Non-owner on left
-                    gameState.ball.x = 20 + PADDLE_WIDTH + BALL_SIZE;
-                    gameState.ball.y = gameState.localPaddle.y + PADDLE_HEIGHT / 2;
                 }
+                // Non-owner: Do nothing. Let network updates (enabled in v3.11.1) control ball pos.
+                // Previously this forced ball to local paddle, hiding the server's ball.
             }
         } else {
             // We don't have authority - ALWAYS interpolate toward target
@@ -2206,6 +2204,8 @@ function sendGameState() {
                 lastAcknowledgedSequence,
                 ball
             );
+            // DEBUG: Log outbound packet
+            // if (frameCounter % 60 === 0) console.log(`Sending: F${frameCounter} P${paddleY} B${ball ? 'YES' : 'NO'}`);
             SpixiAppSdk.sendNetworkData(binaryData);
         } else {
             // JSON fallback
@@ -2435,6 +2435,9 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                 const seq = binaryMsg.seq;
                 const lastAck = binaryMsg.lastAck;
 
+                // DEBUG: Log inbound packet
+                // if (frame % 60 === 0) console.log(`Rectv: F${frame} P${paddleY}`);
+
                 // ALWAYS update remote paddle - paddle position is stateless
                 // and doesn't need ordering guarantees like ball physics.
                 // This ensures smooth paddle movement even if some packets are rejected.
@@ -2656,7 +2659,7 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                     ballTarget.y = msg.b.y;
                     ballTarget.vx = mirroredVx;
                     ballTarget.vy = vy;
-
+ 
                     // If we don't have authority, snap to remote state
                     // (they are simulating, we follow)
                     if (!gameState.hasActiveBallAuthority) {
