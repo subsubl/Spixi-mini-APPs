@@ -1,0 +1,233 @@
+/* Chat & Status UI Additions */
+
+/* Button Utilities */
+.btn-icon-only {
+    padding: 12px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-danger {
+    background: rgba(255, 69, 58, 0.2);
+    color: #ff453a;
+    border: 1px solid rgba(255, 69, 58, 0.5);
+}
+
+.btn-danger:active {
+    background: rgba(255, 69, 58, 0.4);
+}
+
+.connection-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+    justify-content: center;
+}
+
+/* Status Pill */
+.opponent-status-pill {
+    margin-top: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(4px);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffcc00;
+    /* Default: Idle/Lobby */
+    box-shadow: 0 0 5px #ffcc00;
+}
+
+.status-dot.ready {
+    background: #30d158;
+    /* Ready/Playing */
+    box-shadow: 0 0 5px #30d158;
+}
+
+/* Chat Panel */
+.chat-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    height: 400px;
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.27), opacity 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.chat-hidden {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.chat-header {
+    padding: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px 16px 0 0;
+}
+
+.chat-title {
+    font-weight: 600;
+    font-size: 15px;
+    color: #fff;
+}
+
+.chat-close-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 5px;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message-bubble {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 85%;
+    word-wrap: break-word;
+}
+
+.message-bubble.mine {
+    align-self: flex-end;
+    background: #0a84ff;
+    /* iOS Blue */
+    color: white;
+    border-bottom-right-radius: 2px;
+}
+
+.message-bubble.theirs {
+    align-self: flex-start;
+    background: #2c2c2e;
+    /* iOS Dark Gray */
+    border-bottom-left-radius: 2px;
+}
+
+.system-message {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    margin: 5px 0;
+    font-style: italic;
+}
+
+.chat-input-area {
+    padding: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    gap: 10px;
+}
+
+#chatInput {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 8px 15px;
+    color: white;
+    font-size: 14px;
+    outline: none;
+}
+
+#chatInput:focus {
+    border-color: #0a84ff;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.chat-send-btn {
+    background: #0a84ff;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.chat-send-btn svg {
+    width: 18px;
+    height: 18px;
+    margin-left: -2px;
+    /* Visual centering adjustment */
+}
+
+.chat-send-btn:active {
+    transform: scale(0.95);
+}
+
+/* Notification Badge */
+.chat-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff3b30;
+    color: white;
+    font-size: 10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #000;
+    font-weight: bold;
+}
+
+.chat-badge.hidden {
+    transform: scale(0);
+    opacity: 0;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .chat-panel {
+        width: 100%;
+        height: 50vh;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        border-radius: 20px 20px 0 0;
+    }
+}

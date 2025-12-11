@@ -578,6 +578,14 @@ const reusableBallState = { x: 0, y: 0, vx: 0, vy: 0 };
 // Message batching
 let pendingMessages = [];
 
+// Chat & Status State
+let isChatOpen = false;
+let checkUnreadMessages = 0;
+let localPlayerStatus = 'lobby'; // 'lobby', 'ready', 'playing'
+let remotePlayerStatus = 'unknown'; // 'unknown', 'lobby', 'ready', 'playing'
+
+
+
 // Critical message retransmission
 let criticalMsgSeq = 0;
 const pendingCritical = new Map(); // seqId -> { msg, sentAt, retries }
@@ -788,6 +796,7 @@ function initGame() {
     canvas.height = CANVAS_HEIGHT;
 
     setupControls();
+    setupChatUI(); // Initialize Chat UI
 
     // Show waiting screen initially with modern classes
     const waitingScreen = document.getElementById('waiting-screen');
@@ -972,6 +981,7 @@ function setupControls() {
 function startGame() {
     gameStartTime = Date.now();
     gameState.gameStarted = true;
+    sendPlayerStatus('playing');
 
     // Determine ball owner based on random number comparison
     // Higher number wins. If equal (rare), compare session IDs
@@ -1748,6 +1758,7 @@ function endGame(won) {
 
     saveGameState();
     sendEndGame();
+    sendPlayerStatus('lobby');
 }
 
 function restartGame() {
@@ -2611,6 +2622,16 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                 }
                 break;
 
+            case "chat":
+                // Handle Chat Message
+                if (msg.text) addChatMessage(msg.text, false);
+                break;
+
+            case "status":
+                // Handle Player Status
+                if (msg.state) updateOpponentStatusUI(msg.state);
+                break;
+
             case "launch":
                 // Ball owner has launched
                 if (!gameState.isBallOwner) {
@@ -2785,6 +2806,146 @@ SpixiAppSdk.onStorageData = function (key, value) {
         }
     }
 };
+
+// ==========================================
+// CHAT & STATUS LOGIC
+// ==========================================
+
+function setupChatUI() {
+    // Chat Toggle Buttons
+    const toggleButtons = ['waitingChatBtn', 'gameOverChatBtn'];
+    toggleButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', toggleChat);
+    });
+
+    // Close Chat Button
+    const closeBtn = document.getElementById('closeChatBtn');
+    if (closeBtn) closeBtn.addEventListener('click', toggleChat);
+
+    // Send Message Button
+    const sendBtn = document.getElementById('sendChatBtn');
+    if (sendBtn) sendBtn.addEventListener('click', sendChatMessage);
+
+    // Input Enter Key
+    const input = document.getElementById('chatInput');
+    if (input) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+    }
+
+    // Exit Button
+    const exitBtn = document.getElementById('waitingExitBtn');
+    if (exitBtn) {
+        exitBtn.addEventListener('click', () => {
+            SpixiAppSdk.exit();
+        });
+    }
+
+    // Initial Status Broadcast
+    sendPlayerStatus('lobby');
+}
+
+function toggleChat() {
+    const chatPanel = document.getElementById('chat-panel');
+    const waitingBadge = document.getElementById('waitingChatBadge');
+    const gameOverBadge = document.getElementById('gameOverChatBadge');
+
+    isChatOpen = !isChatOpen;
+
+    if (isChatOpen) {
+        chatPanel.classList.remove('chat-hidden');
+        checkUnreadMessages = 0;
+        waitingBadge.classList.add('hidden');
+        gameOverBadge.classList.add('hidden');
+        setTimeout(() => document.getElementById('chatInput').focus(), 300);
+    } else {
+        chatPanel.classList.add('chat-hidden');
+    }
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    // Send to remote
+    SpixiAppSdk.sendNetworkData(JSON.stringify({
+        a: "chat",
+        text: text
+    }));
+
+    // Add to local UI
+    addChatMessage(text, true);
+    input.value = '';
+}
+
+function addChatMessage(text, isMine) {
+    const container = document.getElementById('chatMessages');
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${isMine ? 'mine' : 'theirs'}`;
+    bubble.textContent = text;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+
+    if (!isMine && !isChatOpen) {
+        checkUnreadMessages++;
+        updateChatBadges();
+    }
+}
+
+function updateChatBadges() {
+    const count = checkUnreadMessages > 9 ? '9+' : checkUnreadMessages;
+    ['waitingChatBadge', 'gameOverChatBadge'].forEach(id => {
+        const badge = document.getElementById(id);
+        if (badge) {
+            badge.textContent = count;
+            badge.classList.remove('hidden');
+        }
+    });
+}
+
+function sendPlayerStatus(status) {
+    localPlayerStatus = status;
+    SpixiAppSdk.sendNetworkData(JSON.stringify({
+        a: "status",
+        state: status
+    }));
+}
+
+function updateOpponentStatusUI(status) {
+    const pill = document.getElementById('waitingOpponentStatus');
+    const dot = pill.querySelector('.status-dot');
+    const text = pill.querySelector('.status-text');
+
+    if (pill) {
+        pill.classList.remove('hidden');
+        remotePlayerStatus = status;
+
+        if (status === 'playing') {
+            dot.classList.add('ready');
+            text.textContent = "Opponent is Playing";
+        } else if (status === 'lobby') {
+            dot.classList.remove('ready');
+            text.textContent = "Opponent is in Lobby";
+        } else {
+            dot.classList.remove('ready');
+            text.textContent = "Opponent Status Unknown";
+        }
+    }
+}
+
+// Helper to check if binary
+function isBinaryPacket(str) {
+    // Basic heuristic: check if it looks like base64 and starts with known types
+    if (typeof str !== 'string') return false;
+    // Check for msg type byte at start (base64 encoded first char)
+    // 1 (MSG_STATE) -> A...
+    // 2 (MSG_COLLISION) -> A... (wait, base64 encoding shifts. Need safe check)
+    // Actually, simple JSON check is safer.
+    return !str.trim().startsWith('{');
+}
 
 // Start the app on load
 window.onload = SpixiAppSdk.fireOnLoad;
