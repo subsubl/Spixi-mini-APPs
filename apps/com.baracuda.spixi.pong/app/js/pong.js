@@ -199,27 +199,6 @@ const MSG_STATUS = 16;   // [type:1][status:1]
 
 
 /**
- * Encode a state packet to binary format
- * Layout: [type:1][frame:2][paddleY:2][seq:2][lastAck:2][ballX:2][ballY:2][ballVx:2][ballVy:2] = 17 bytes
- */
-function encodeStatePacket(frame, paddleY, seq, lastAck, ball) {
-    const buffer = new ArrayBuffer(17);
-    const view = new DataView(buffer);
-    view.setUint8(0, MSG_STATE);
-    view.setUint16(1, frame & 0xFFFF, true); // Little-endian
-    view.setUint16(3, Math.round(paddleY) & 0xFFFF, true);
-    view.setUint16(5, seq & 0xFFFF, true);
-    view.setUint16(7, lastAck & 0xFFFF, true);
-    if (ball) {
-        view.setUint16(9, Math.round(ball.x) & 0xFFFF, true);
-        view.setUint16(11, Math.round(ball.y) & 0xFFFF, true);
-        view.setInt16(13, Math.round(ball.vx * 100), true);
-        view.setInt16(15, Math.round(ball.vy * 100), true);
-    }
-    return btoa(String.fromCharCode(...new Uint8Array(buffer)));
-}
-
-/**
  * Encode a paddle update packet (compact)
  * Layout: [type:1][paddleY:2][seq:2] = 5 bytes
  */
@@ -229,22 +208,6 @@ function encodePaddlePacket(paddleY, seq) {
     view.setUint8(0, MSG_PADDLE);
     view.setUint16(1, Math.round(paddleY) & 0xFFFF, true);
     view.setUint16(3, seq & 0xFFFF, true);
-    return btoa(String.fromCharCode(...new Uint8Array(buffer)));
-}
-
-/**
- * Encode a simple packet (ping, pong, connect, etc.)
- * Layout: [type:1][timestamp:4][x:2][y:2][vx:2][vy:2] = 13 bytes
- */
-function encodeBallEventPacket(type, timestamp, ball) {
-    const buffer = new ArrayBuffer(13);
-    const view = new DataView(buffer);
-    view.setUint8(0, type);
-    view.setUint32(1, timestamp & 0xFFFFFFFF, true);
-    view.setUint16(5, Math.round(ball.x) & 0xFFFF, true);
-    view.setUint16(7, Math.round(ball.y) & 0xFFFF, true);
-    view.setInt16(9, Math.round(ball.vx * 100), true);
-    view.setInt16(11, Math.round(ball.vy * 100), true);
     return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
 
@@ -709,12 +672,6 @@ let disconnectCheckInterval = null;
 
 // Performance monitoring
 let lastFrameTime = 0;
-let frameTimeAccumulator = 0;
-let framesMeasured = 0;
-
-// Object reuse to reduce GC
-const reusableStatePacket = { a: "state" };
-const reusableBallState = { x: 0, y: 0, vx: 0, vy: 0 };
 
 
 // ===== PREDICTION ROLLBACK =====
@@ -1143,19 +1100,15 @@ function launchBall() {
         // Use local time for launch event (receiver syncs to this)
         const launchTime = Date.now();
 
-        SpixiAppSdk.sendNetworkData(JSON.stringify({
-            a: "launch",
-            t: launchTime,
-            b: {
-                x: Math.round(CANVAS_WIDTH - b.x), // Mirror X
-                y: Math.round(b.y),
-                vx: Math.round(-b.vx * 100),   // Integer velocity (*100)
-                vy: Math.round(b.vy * 100)
-            }
-        }));
+        const ballData = {
+            x: Math.round(CANVAS_WIDTH - b.x),
+            y: Math.round(b.y),
+            vx: Math.round(-b.vx * 100),
+            vy: Math.round(b.vy * 100)
+        };
+        SpixiAppSdk.sendNetworkData(encodeBallEventPacket(MSG_LAUNCH, launchTime, ballData));
         lastDataSent = SpixiTools.getTimestamp();
         lastSyncTime = 0;
-        // sendGameState(); // No longer needed for ball, but useful for paddle
     }
 }
 
@@ -1174,35 +1127,10 @@ function gameLoop(timestamp) {
         const deltaTime = timestamp - lastFrameTime;
         lastFrameTime = timestamp;
 
-        // Monitor performance (adaptive network rate)
-        if (deltaTime > 0) {
-            frameTimeAccumulator += deltaTime;
-            framesMeasured++;
-
-            if (framesMeasured >= 60) {
-                const avgFrameTime = frameTimeAccumulator / framesMeasured;
-                // If dropping frames (avg > 20ms, i.e., < 50fps), throttle network
-                if (avgFrameTime > 20) {
-                    currentNetworkRate = NETWORK_RATE_THROTTLED;
-                } else {
-                    // Otherwise use active/idle logic
-                    const ballActive = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
-                    currentNetworkRate = ballActive ? NETWORK_RATE_ACTIVE : NETWORK_RATE_IDLE;
-                }
-                frameTimeAccumulator = 0;
-                framesMeasured = 0;
-            }
-        }
-
         frameCounter++;
 
         // Save state snapshot for potential rollback
         saveStateSnapshot();
-
-        // Debug logging every 60 frames (1 second)
-        if (frameCounter % 60 === 0) {
-            console.log(`GameLoop alive: frame=${frameCounter}, ball=(${gameState.ball.x.toFixed(1)},${gameState.ball.y.toFixed(1)}), v=(${gameState.ball.vx.toFixed(2)},${gameState.ball.vy.toFixed(2)}), auth=${gameState.hasActiveBallAuthority}, owner=${gameState.isBallOwner}`);
-        }
 
         updatePaddle();
 
@@ -1364,7 +1292,7 @@ function updateBall(dt) {
 
         // Send bounce event to keep client synced
         if (gameState.hasActiveBallAuthority) {
-            sendBallEvent("bounce");
+            sendBallEvent(MSG_BOUNCE);
         }
     }
 }
