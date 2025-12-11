@@ -2914,10 +2914,11 @@ function sendPlayerStatus(status) {
 
 function updateOpponentStatusUI(status) {
     const pill = document.getElementById('waitingOpponentStatus');
-    const dot = pill.querySelector('.status-dot');
-    const text = pill.querySelector('.status-text');
-
+    // UI element might be removed, so check first
     if (pill) {
+        const dot = pill.querySelector('.status-dot');
+        const text = pill.querySelector('.status-text');
+
         pill.classList.remove('hidden');
         remotePlayerStatus = status;
 
@@ -2931,6 +2932,9 @@ function updateOpponentStatusUI(status) {
             dot.classList.remove('ready');
             text.textContent = "Opponent Status Unknown";
         }
+    } else {
+        // Just track state internally if UI is gone
+        remotePlayerStatus = status;
     }
 }
 

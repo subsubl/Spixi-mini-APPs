@@ -1,76 +1,72 @@
-# Pong for Spixi
+# Spixi Pong
 
-A real-time multiplayer Pong clone built for the Spixi platform, featuring robust networking, binary protocol communication, and time-based physics.
+Spixi Pong is a high-performance, real-time multiplayer arcade game built for the Spixi messaging platform. It demonstrates advanced P2P networking concepts, including client-side prediction, entity interpolation, and hybrid binary/JSON protocols.
+
+## Features
+
+*   **Real-time Multiplayer**: 60fps local physics with predictive networking.
+*   **P2P Architecture**: Direct peer-to-peer connection via Spixi SDK.
+*   **Lobby Chat**: Encrypted, transient chat available pre- and post-game.
+*   **Adaptive Networking**: Hybrid protocol switching between high-efficiency binary (gameplay) and flexible JSON (chat/status).
+*   **Lag Compensation**: Retroactive collision detection and smooth interpolation for reliable play over cellular networks.
 
 ## Architecture
 
-The application is built using a **Receiver-Authority** model for ball physics and **Client-Side Prediction** for paddle movement.
+### Networking Strategy
+Pong uses a **Receiver-Authoritative** model for ball physics to ensure fairness and responsiveness:
+1.  **Ball Authority**: The player who last hit the ball (or is serving) "owns" the ball simulation. They send definitive updates to the remote peer.
+2.  **Paddle Prediction**: Your local paddle moves instantly (zero latency). Remote paddle updates are interpolated to smooth out network jitter.
+3.  **Hybrid Protocol**:
+    *   **Binary (Type 14)**: High-frequency paddle updates (~30Hz). 5-byte packet for minimal overhead.
+    *   **Binary (Type 1)**: Game state updates (ball position, velocity). Sent only on significant events (launch, bounce, collision).
+    *   **JSON**: Used for low-frequency events like Chat, Handshakes, and Game Over.
 
-### Core Systems
-1.  **Game Loop**: Runs at 60fps using `requestAnimationFrame`. Manages physics(`updateBall`), input (`updatePaddle`), and rendering.
-2.  **Time-Based Physics**: All movement is calculated using `deltaTime` to ensure consistency across different frame rates.
-3.  **Networking**: Custom implementation using `SpixiAppSdk`.
+### Synchronization Techniques
+*   **Client-Side Prediction**: Local inputs are applied immediately.
+*   **Entity Interpolation**: Remote entities (opponent paddle) are rendered slightly in the past, interpolating between the last two received network snapshots for silky-smooth movement.
+*   **Frame Counters**: Every packet is tagged with a frame counter to detect out-of-order delivery and prevent "time travel" glitches.
 
-## Networking & Communication
+## Protocol Specification
 
-The game uses a hybrid networking approach to balance responsiveness and bandwidth.
+### Binary Protocol
+Used for gameplay critical data to minimize bandwidth.
 
-### Synchronization Stratgy
-*   **Paddles**: Synchronized via dedicated lightweight packets (`MSG_PADDLE`) sent on position change (~30fps). Remote paddles are interpolated for smoothness.
-*   **Ball**: Synchronized via:
-    *   **Events**: Launch, Bounce, Collision (Highest Priority).
-    *   **Heartbeat**: Periodic state updates (1fps) to drift correction.
-    *   **Authority**: The player who last hit the ball (or is serving) calculates physics ("Owner"). The other player receives position updates ("Receiver").
+**Paddle Packet (Type 14)**
+`[Type: 1 byte][PaddleY: 2 bytes][Seq: 2 bytes]`
+*   Total: 5 bytes
+*   Sent on every local paddle movement (throttled).
 
-### Latency Compensation
-*   **Client-Side Prediction**: Local paddle moves instantly.
-*   **Dead Reckoning**: Ball position is projected forward based on velocity and timestamps.
-*   **Frame Counters**: Packets are validated against frame counters to reject out-of-order data.
+**State Packet (Type 1)**
+`[Type: 1 byte][Frame: 4 bytes][PaddleY: 2 bytes][BallX: 2 bytes][BallY: 2 bytes][...velocity...]`
+*   Includes full game state.
+*   Sent on ball events (Collision, Launch).
 
-## Binary Protocol Implementation
+### JSON Protocol
+Used for structured, low-frequency data.
 
-To optimize bandwidth, the game uses a custom **Binary Protocol** encoded in Base64.
-All values are Little-Endian.
+*   **Chat**: `{ "a": "chat", "text": "Hello!" }`
+*   **Status**: `{ "a": "status", "state": "lobby" | "playing" }`
+*   **Connection**: `{ "a": "connect", "sid": "...", "rand": 123 }`
 
-### Message Types
-| ID | Name | Description |
-|---|---|---|
-| 1 | MSG_STATE | Unified game state (Frame, Ball, Paddle) |
-| 2 | MSG_COLLISION | High-priority collision event |
-| 3 | MSG_LAUNCH | Ball launch event |
-| 14 | MSG_PADDLE | Dedicated paddle position update |
+## Development
 
-### Packet Structures
+### Prerequisites
+*   Node.js (for packing script)
+*   Spixi Desktop (for testing/deployment)
 
-**MSG_PADDLE (5 bytes)**
-*Dedicated packet for smooth paddle movement.*
-```
-[1 byte] Type (14)
-[2 bytes] PaddleY (Uint16)
-[2 bytes] Sequence (Uint16)
-```
+### Directory Structure
+*   `app/`: Source code (HTML, JS, CSS).
+*   `app/js/pong.js`: Core game logic and networking.
+*   `appinfo.spixi`: App metadata.
 
-**MSG_STATE (17 bytes)**
-*General heartbeat packet.*
-```
-[1 byte] Type (1)
-[2 bytes] Frame Counter
-[2 bytes] PaddleY
-[2 bytes] Sequence
-[2 bytes] LastAck
-[2 bytes] Ball X
-[2 bytes] Ball Y
-[2 bytes] Ball VX (*100)
-[2 bytes] Ball VY (*100)
+### Building
+To pack the application for Spixi:
+
+```bash
+node pack-app.js apps/com.baracuda.spixi.pong packed
 ```
 
-**Ball Events (13 bytes)**
-*Used for MSG_LAUNCH, MSG_COLLISION, MSG_BOUNCE.*
-```
-[1 byte] Type
-[4 bytes] Timestamp (Uint32)
-[2 bytes] Ball X
-[2 bytes] Ball Y
-[2 bytes] Ball VX (*100)
-[2 bytes] Ball VY (*100)
-```
+This creates `packed/pong.spixi`, which can be dragged into Spixi Desktop to install.
+
+## License
+Copyright (C) 2025 Baracuda. MIT License.
