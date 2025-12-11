@@ -308,11 +308,11 @@ function decodeBinaryPacket(base64) {
             result.ballY = view.getUint16(7, true);
             result.ballVx = view.getInt16(9, true) / 100;
             result.ballVy = view.getInt16(11, true) / 100;
-        } else if (binary.length >= 5) {
-            result.data = view.getUint32(1, true);
         } else if (type === MSG_PADDLE && binary.length >= 5) {
             result.paddleY = view.getUint16(1, true);
             result.seq = view.getUint16(3, true);
+        } else if (binary.length >= 5) {
+            result.data = view.getUint32(1, true);
         }
 
         return result;
