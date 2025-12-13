@@ -363,30 +363,16 @@ function decodeBinaryPacket(base64) {
             result.ballY = view.getUint16(11, true);
             result.ballVx = view.getInt16(13, true) / 100;
             result.ballVy = view.getInt16(15, true) / 100;
-        } else if ((type === MSG_LAUNCH || type === MSG_BOUNCE || type === MSG_COLLISION || type === MSG_PING || type === MSG_PONG) && binary.length >= 13) {
-            // Ball events and Ping/Pong share similar structure (Timestamp + Ball/Data)
-            // Ping/Pong abuse Ball structure: Timestamp=t, BallX=origT(low), BallY=origT(high)
-            // actually standard Ping uses encodeBallEventPacket structure? NO. 
-            // Wait, previous code used encodeSimplePacket for Ping (lines 147/181).
-            // Let's check strict layout.
-            // Ping/Pong needs T + OrigT. 
-            // encodeBallEventPacket: [type:1][timestamp:4][x:2][y:2]...
-            // Msg_Ping (Line 147): a:"ping", t:now. -> encodeBallEventPacket(MSG_PING, now, dummyBall) ?
-            // NO. The audit showed manual JSON for ping. 
-            // We need a specific Ping Binary format. 
-            // Let's use the layout: [type:1][timestamp:4][origT:4] = 9 bytes
-
-            if (type === MSG_PING || type === MSG_PONG) {
-                if (binary.length >= 5) result.t = view.getUint32(1, true); // Timestamp
-                if (binary.length >= 9) result.origT = view.getUint32(5, true); // Orig Timestamp
-            } else {
-                // Launch/Bounce/Collision
-                result.timestamp = view.getUint32(1, true); // Event time
-                result.ballX = view.getUint16(5, true);
-                result.ballY = view.getUint16(7, true);
-                result.ballVx = view.getInt16(9, true) / 100;
-                result.ballVy = view.getInt16(11, true) / 100;
-            }
+        } else if ((type === MSG_PING || type === MSG_PONG) && binary.length >= 9) {
+            result.t = view.getUint32(1, true);
+            result.origT = view.getUint32(5, true);
+        } else if ((type === MSG_LAUNCH || type === MSG_BOUNCE || type === MSG_COLLISION) && binary.length >= 13) {
+            // Launch/Bounce/Collision
+            result.timestamp = view.getUint32(1, true); // Event time
+            result.ballX = view.getUint16(5, true);
+            result.ballY = view.getUint16(7, true);
+            result.ballVx = view.getInt16(9, true) / 100;
+            result.ballVy = view.getInt16(11, true) / 100;
         } else if (type === MSG_PADDLE && binary.length >= 5) {
             result.paddleY = view.getUint16(1, true);
             result.seq = view.getUint16(3, true);
@@ -2576,8 +2562,8 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                         },
                         // Fix for jitter: Compensate for latency!
                         // The state packet was sent 'rtt/2' ms ago.
-                        // We must backdate the event time so handleBallEvent calculates correct dt.
-                        t: Date.now() - ((timeSync.rtt || 50) / 2)
+                        // We must use SYNCED time (remote clock) because handleBallEvent compares against getSyncedTime().
+                        t: timeSync.getSyncedTime() - ((timeSync.rtt || 50) / 2)
                     };
                     handleBallEvent(ballMsg);
                 }
