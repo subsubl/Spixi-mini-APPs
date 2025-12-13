@@ -2562,10 +2562,9 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                             vx: Math.round(binaryMsg.ballVx * 100),
                             vy: Math.round(binaryMsg.ballVy * 100)
                         },
-                        // Fix for jitter: Compensate for latency!
-                        // The state packet was sent 'rtt/2' ms ago.
-                        // We must use SYNCED time (remote clock) because handleBallEvent compares against getSyncedTime().
-                        t: timeSync.getSyncedTime() - ((timeSync.rtt || 50) / 2),
+                        // Legacy behavior: No latency compensation for State updates.
+                        // This forces dt = 0 in handleBallEvent (snaps to position).
+                        // This avoids jitter from time sync fluctuations.
                         isDecodedBinary: true
                     };
                     handleBallEvent(ballMsg);
