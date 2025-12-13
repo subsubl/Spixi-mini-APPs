@@ -2542,6 +2542,12 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
             }
 
             if (binaryMsg.type === MSG_STATE) {
+                // If we receive state but aren't connected, we might have missed the handshake.
+                // Aggressively send CONNECT to prompt the other side to reply.
+                if (!connectionEstablished) {
+                    SpixiAppSdk.sendNetworkData(encodeConnectPacket(sessionId, myRandomNumber));
+                }
+
                 // Process binary state packet
                 const frame = binaryMsg.frame;
                 const paddleY = binaryMsg.paddleY;
@@ -2589,7 +2595,10 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
             }
 
             if (binaryMsg.type === MSG_CONNECT) {
-                if (binaryMsg.rand) remoteRandomNumber = binaryMsg.rand;
+                if (binaryMsg.rand !== undefined) {
+                    remoteRandomNumber = binaryMsg.rand;
+                    if (binaryMsg.sid) remotePlayerAddress = binaryMsg.sid; // Save remote session ID
+                }
 
                 // Reply with Connect (fire and forget)
                 SpixiAppSdk.sendNetworkData(encodeConnectPacket(sessionId, myRandomNumber));
