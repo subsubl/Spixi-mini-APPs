@@ -551,9 +551,10 @@ let gameState = {
         vx: 0,
         vy: 0
     },
-    isBallOwner: false, // Who controls the ball (randomly assigned at start)
+    isBallOwner: false, // Who controls the ball (randomly assigned at start) - determines sides
     hasActiveBallAuthority: false, // Who currently simulates ball (switches on each hit)
     pendingAuthorityTransfer: false, // Wait for update to be sent before dropping authority
+    isServer: false, // Who serves next (coin flip winner first, then last scorer)
     gameStarted: false,
     gameEnded: false,
     lastUpdate: 0,
@@ -1013,6 +1014,9 @@ function startGame() {
     } else {
         gameState.isBallOwner = myRandomNumber > remoteRandomNumber;
     }
+
+    // First serve: coin flip winner (ball owner) serves first
+    gameState.isServer = gameState.isBallOwner;
 
     // Reset game state and initialize serve
     resetBall(false); // Manual launch for first serve
@@ -1524,12 +1528,14 @@ function checkCollisions() {
 
 function checkScore() {
     if (gameState.ball.x < 0) {
-        // Left side (non-owner) missed
+        // Left side missed - right side (ball owner) scored
         if (gameState.isBallOwner) {
             gameState.remotePaddle.lives--;
+            gameState.isServer = true; // I scored, I serve next
             playScoreSound(true); // We scored
         } else {
             gameState.localPaddle.lives--;
+            gameState.isServer = false; // Opponent scored, they serve
             playScoreSound(false); // We lost a life
         }
         updateLivesDisplay();
@@ -1541,12 +1547,14 @@ function checkScore() {
             sendLifeUpdate();
         }
     } else if (gameState.ball.x > CANVAS_WIDTH) {
-        // Right side (ball owner) missed
+        // Right side missed - left side (non-owner) scored
         if (gameState.isBallOwner) {
             gameState.localPaddle.lives--;
+            gameState.isServer = false; // Opponent scored, they serve
             playScoreSound(false); // We lost a life
         } else {
             gameState.remotePaddle.lives--;
+            gameState.isServer = true; // I scored, I serve next
             playScoreSound(true); // We scored
         }
         updateLivesDisplay();
@@ -1564,50 +1572,50 @@ function resetBall(autoLaunch = true) {
     // Position ball at serving paddle
     resetBallPosition();
 
-    // Determine who serves (whoever got scored on serves)
-    // For now, alternate based on ball owner
-    const servingPlayer = gameState.isBallOwner;
-    gameState.hasActiveBallAuthority = servingPlayer;
+    // Server (last scorer) has authority to launch
+    gameState.hasActiveBallAuthority = gameState.isServer;
 
-    if (autoLaunch) {
-        // Auto-launch ball from paddle with random angle toward opponent
+    if (autoLaunch && gameState.isServer) {
+        // I am serving - auto-launch ball with random angle toward opponent
         const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
 
         if (gameState.isBallOwner) {
-            // Ball owner on right - shoot left (toward opponent)
+            // I'm on right - shoot left (toward opponent)
             gameState.ball.vx = -Math.cos(angle) * BALL_SPEED_INITIAL;
         } else {
-            // Non-owner on left - shoot right (toward opponent)
+            // I'm on left - shoot right (toward opponent)
             gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL;
         }
         gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
 
         // Send ball state immediately
         const b = gameState.ball;
-        // Use synced time for launch event
         const launchTime = timeSync.getSyncedTime();
 
         SpixiAppSdk.sendNetworkData(encodeBallEventPacket(MSG_LAUNCH, launchTime, {
             x: Math.round(CANVAS_WIDTH - b.x),
             y: Math.round(b.y),
-            vx: -b.vx, // Pass raw float
+            vx: -b.vx,
             vy: b.vy
         }));
         lastDataSent = SpixiTools.getTimestamp();
-    } else {
-        // Manual launch - wait for user input
+    } else if (!autoLaunch && gameState.isServer) {
+        // Manual launch - I'm the server, wait for my input
         gameState.waitingForServe = true;
         gameState.ball.vx = 0;
         gameState.ball.vy = 0;
 
-        if (gameState.isBallOwner) {
-            document.getElementById('status-text').textContent = "Your Serve - Tap to Launch";
-            document.getElementById('shootBtn').style.display = 'inline-flex';
-            document.getElementById('shootBtn').disabled = false;
-        } else {
-            document.getElementById('status-text').textContent = "Opponent's Serve";
-            document.getElementById('shootBtn').style.display = 'none';
-        }
+        document.getElementById('status-text').textContent = "Your Serve - Tap to Launch";
+        document.getElementById('shootBtn').style.display = 'inline-flex';
+        document.getElementById('shootBtn').disabled = false;
+    } else {
+        // I'm not serving - wait for opponent
+        gameState.waitingForServe = true;
+        gameState.ball.vx = 0;
+        gameState.ball.vy = 0;
+
+        document.getElementById('status-text').textContent = "Opponent's Serve";
+        document.getElementById('shootBtn').style.display = 'none';
     }
 }
 
@@ -1706,13 +1714,19 @@ function render() {
         ctx.fillStyle = leftPaddleColor;
         ctx.fillRect(leftPaddleX, leftPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
 
-        // Draw ball - only if it has velocity OR we have authority OR (waiting for serve AND we own ball)
+        // Draw ball - only if it has velocity OR we have authority OR (waiting for serve AND we are server)
         // Lower threshold to 0.01 to ensure ball is visible even at very low speeds
         const ballVisible = (Math.abs(gameState.ball.vx) > 0.01 || Math.abs(gameState.ball.vy) > 0.01) ||
             gameState.hasActiveBallAuthority ||
-            (gameState.waitingForServe && gameState.isBallOwner);
+            (gameState.waitingForServe && gameState.isServer);
         if (ballVisible) {
-            ctx.fillStyle = '#ffffff';
+            // Ball color: subtle tint based on who has authority
+            // White with slight red/blue glow based on authority holder's side
+            if (gameState.hasActiveBallAuthority) {
+                ctx.fillStyle = '#ffeeee'; // Slight red tint (I have authority)
+            } else {
+                ctx.fillStyle = '#eeeeff'; // Slight blue tint (opponent has authority)
+            }
             ctx.beginPath();
             ctx.arc(gameState.ball.x, gameState.ball.y, BALL_SIZE / 2, 0, Math.PI * 2);
             ctx.fill();
