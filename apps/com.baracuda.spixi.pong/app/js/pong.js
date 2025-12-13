@@ -2009,7 +2009,7 @@ function sendBallEvent(type) {
     lastDataSent = SpixiTools.getTimestamp();
 }
 
-function handleBallEvent(msg) {
+function handleBallEvent(msg, takeAuthority = false) {
     // Extract state
     let cookedX, cookedY, cookedVx, cookedVy;
 
@@ -2091,10 +2091,21 @@ function handleBallEvent(msg) {
         }
     }
 
-    // 3. Calculate Correction Vector (Convergence)
-    // If we are already close, corrections -> 0.
-    // If we are far, we need to nudge the local ball towards the predicted position.
+    // 3. Apply State
+    // If taking authority, SNAP to predicted position (no error correction needed, we are starting fresh)
+    if (takeAuthority) {
+        gameState.ball.x = predictedX;
+        gameState.ball.y = predictedY;
+        gameState.ball.vx = predictedVx;
+        gameState.ball.vy = predictedVy;
+        gameState.ballCorrection.x = 0;
+        gameState.ballCorrection.y = 0;
+        gameState.hasActiveBallAuthority = true;
+        // console.log("Taking authority - snapped ball to:", predictedX, predictedY);
+        return;
+    }
 
+    // If NOT taking authority, use Error Correction (Convergence)
     // Distance between current local ball and where the network says it should be
     const dx = predictedX - gameState.ball.x;
     const dy = predictedY - gameState.ball.y;
@@ -2108,13 +2119,11 @@ function handleBallEvent(msg) {
         gameState.ball.vy = predictedVy;
         gameState.ballCorrection.x = 0;
         gameState.ballCorrection.y = 0;
-        // console.log("Ball snapped! Dist:", dist);
     } else {
         // Small error -> Smooth correction
         // We set the target correction. The game loop will apply portions of this.
-        // Actually, simpler: Set the local ball to match calculated velocity, 
-        // but keep the position error to be resolved smoothly.
 
+        // Update velocity immediately to match network
         gameState.ball.vx = predictedVx;
         gameState.ball.vy = predictedVy;
 
@@ -2123,14 +2132,11 @@ function handleBallEvent(msg) {
         gameState.ballCorrection.y = dy;
     }
 
-    // Update targets for reference/interpolation variables (legacy but kept for safety)
+    // Update targets for reference
     ballTarget.x = gameState.ball.x;
     ballTarget.y = gameState.ball.y;
     ballTarget.vx = gameState.ball.vx;
     ballTarget.vy = gameState.ball.vy;
-
-    // Ball is now heading toward us - WE have authority (receiver model)
-    gameState.hasActiveBallAuthority = true;
 }
 
 // Network functions - Unified game state sync at 10fps (100ms intervals)
@@ -2541,7 +2547,8 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                     // Use binary message directly.
                     // It has {ballX, ballY, ballVx, ballVy} as expected by handleBallEvent's binary path.
                     // It has NO 't' property, so handleBallEvent will use current time (dt=0), ensuring snap.
-                    handleBallEvent(binaryMsg);
+                    // Periodic updates NEVER take authority.
+                    handleBallEvent(binaryMsg, false);
                 }
 
                 return; // Binary packet fully processed
@@ -2583,19 +2590,22 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                     // handleBallEvent expects msg.b OR msg.x/y... 
                     // decoder returns flat result: timestamp, ballX, ballY, etc.
                     // Adapt for handleBallEvent:
-                    handleBallEvent(binaryMsg);
+                    // LAUNCH -> Take Authority (Start simulating)
+                    handleBallEvent(binaryMsg, true);
                 }
                 return;
             }
 
             if (binaryMsg.type === MSG_BOUNCE) {
-                if (!gameState.isBallOwner) handleBallEvent(binaryMsg);
+                // BOUNCE -> Update state but DO NOT take authority
+                if (!gameState.isBallOwner) handleBallEvent(binaryMsg, false);
                 return;
             }
 
             if (binaryMsg.type === MSG_COLLISION) {
                 if (binaryMsg.t) {
-                    handleBallEvent(binaryMsg);
+                    // COLLISION -> Take Authority (Opponent hit to us)
+                    handleBallEvent(binaryMsg, true);
 
                     // DYNAMIC AUTHORITY:
                     // Opponent just hit the ball and relinquished authority.
