@@ -1,190 +1,76 @@
-# Pong - Spixi Mini App
+# Pong for Spixi
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
-![Platform](https://img.shields.io/badge/platform-Spixi-green.svg)
-![Players](https://img.shields.io/badge/players-2-orange.svg)
+A real-time multiplayer Pong clone built for the Spixi platform, featuring robust networking, binary protocol communication, and time-based physics.
 
-A classic Pong game reimagined as a real-time multiplayer Spixi Mini App. Challenge your friends to a fast-paced paddle battle with responsive controls and smooth gameplay.
+## Architecture
 
-## 🎮 Game Features
+The application is built using a **Receiver-Authority** model for ball physics and **Client-Side Prediction** for paddle movement.
 
-- **Real-time Multiplayer**: Play against another Spixi user with minimal latency
-- **Lives System**: Each player starts with 3 lives - last one standing wins!
-- **Responsive Controls**: Keyboard (Arrow keys/W-S) and touch controls
-- **Optimized Network**: Minimal packet sizes for smooth gameplay even on slower connections
-- **Mobile-First Design**: Responsive UI that works great on all devices
-- **Session Persistence**: Game state is saved automatically
+### Core Systems
+1.  **Game Loop**: Runs at 60fps using `requestAnimationFrame`. Manages physics(`updateBall`), input (`updatePaddle`), and rendering.
+2.  **Time-Based Physics**: All movement is calculated using `deltaTime` to ensure consistency across different frame rates.
+3.  **Networking**: Custom implementation using `SpixiAppSdk`.
 
-## 🎯 How to Play
+## Networking & Communication
 
-### Starting the Game
+The game uses a hybrid networking approach to balance responsiveness and bandwidth.
 
-1. Open the app in Spixi and invite another user
-2. Wait for both players to connect (you'll see "Press START when ready!")
-3. Both players click the **START** button
-4. Watch the 3-second countdown (3... 2... 1...)
-5. Host player clicks **SHOOT** to launch the ball
-6. Use controls to move your paddle and prevent the ball from passing
+### Synchronization Stratgy
+*   **Paddles**: Synchronized via dedicated lightweight packets (`MSG_PADDLE`) sent on position change (~30fps). Remote paddles are interpolated for smoothness.
+*   **Ball**: Synchronized via:
+    *   **Events**: Launch, Bounce, Collision (Highest Priority).
+    *   **Heartbeat**: Periodic state updates (1fps) to drift correction.
+    *   **Authority**: The player who last hit the ball (or is serving) calculates physics ("Owner"). The other player receives position updates ("Receiver").
 
-### Controls
+### Latency Compensation
+*   **Client-Side Prediction**: Local paddle moves instantly.
+*   **Dead Reckoning**: Ball position is projected forward based on velocity and timestamps.
+*   **Frame Counters**: Packets are validated against frame counters to reject out-of-order data.
 
-**Desktop:**
-- Arrow Up / W - Move paddle up
-- Arrow Down / S - Move paddle down
+## Binary Protocol Implementation
 
-**Mobile:**
-- Touch ▲ button - Move paddle up
-- Touch ▼ button - Move paddle down
+To optimize bandwidth, the game uses a custom **Binary Protocol** encoded in Base64.
+All values are Little-Endian.
 
-### Rules
+### Message Types
+| ID | Name | Description |
+|---|---|---|
+| 1 | MSG_STATE | Unified game state (Frame, Ball, Paddle) |
+| 2 | MSG_COLLISION | High-priority collision event |
+| 3 | MSG_LAUNCH | Ball launch event |
+| 14 | MSG_PADDLE | Dedicated paddle position update |
 
-- Each player has **3 lives**
-- Lose a life when the ball passes your paddle
-- First player to run out of lives loses
-- Ball speed increases with each paddle hit for more excitement
+### Packet Structures
 
-### In-Game Actions
-
-- **START** - Mark yourself as ready (both players must click)
-- **SHOOT** - Launch the ball (host player only, after countdown)
-- **Exit** - Close the app and return to Spixi
-- **Play Again** - Restart the game after it ends (resets lives to 3)
-
-## 🏗️ Technical Details
-
-### Architecture
-
-- **Host-Client Model**: Player with lower address is the host
-- **Host Authority**: Ball physics calculated by host, synced to client
-- **Peer-to-Peer**: Direct communication between players via Spixi network
-- **Handshake Protocol**: Hello messages ensure both players are present before starting
-
-### Network Optimization
-
-The app uses highly optimized network packets:
-- Single-character action codes (`a` field)
-- Rounded coordinates to reduce float precision
-- Minimal JSON structure
-- ~16ms paddle update rate for real-time responsiveness
-
-**Packet Examples:**
-```javascript
-Hello:       {"a":"h"}
-Paddle Move: {"a":"m","y":250}
-Game State:  {"a":"g","b":{"x":400,"y":300,"vx":"6.00","vy":"3.50"},"l":3,"r":2}
+**MSG_PADDLE (5 bytes)**
+*Dedicated packet for smooth paddle movement.*
+```
+[1 byte] Type (14)
+[2 bytes] PaddleY (Uint16)
+[2 bytes] Sequence (Uint16)
 ```
 
-### Performance
-
-- 60 FPS game loop
-- ~60 FPS paddle position updates
-- Automatic connection health monitoring via ping/pong
-- Graceful handling of network delays
-
-## 📱 Compatibility
-
-- **Platform**: Spixi Messenger
-- **SDK Version**: 0.3+
-- **App Type**: multiUser (2 players required)
-- **Capabilities**: Real-time P2P communication, local storage
-
-## 🔧 Development
-
-### File Structure
-
+**MSG_STATE (17 bytes)**
+*General heartbeat packet.*
 ```
-com.baracuda.spixi.pong/
-├── appinfo.spixi          # App metadata
-├── icon.png               # 512x512 app icon
-├── README.md              # This file
-└── app/
-    ├── index.html         # Main HTML
-    ├── css/
-    │   └── styles.css     # All styling
-    └── js/
-        ├── pong.js        # Game logic
-        ├── spixi-app-sdk.js
-        └── spixi-tools.js
+[1 byte] Type (1)
+[2 bytes] Frame Counter
+[2 bytes] PaddleY
+[2 bytes] Sequence
+[2 bytes] LastAck
+[2 bytes] Ball X
+[2 bytes] Ball Y
+[2 bytes] Ball VX (*100)
+[2 bytes] Ball VY (*100)
 ```
 
-### Key Functions
-
-- `initGame()` - Initialize canvas and controls
-- `startGame()` - Begin game loop and enable controls
-- `gameLoop()` - 60 FPS update cycle
-- `updateBall()` - Host-only ball physics
-- `checkCollisions()` - Paddle-ball collision detection
-- `sendPaddlePosition()` - Real-time paddle sync
-- `sendGameState()` - Ball state sync (host to client)
-
-### Network Protocol
-
-| Action Code | Description | Direction |
-|------------|-------------|-----------|
-| `h` | Hello handshake (1s interval) | Both |
-| `p` | Ping keepalive | Both |
-| `m` | Paddle move | Both |
-| `ready` | Player ready for countdown | Both |
-| `shoot` | Ball launched | Host → Client |
-| `g` | Game state (ball + lives) | Host → Client |
-| `e` | End game | Both |
-| `r` | Restart request | Both |
-
-## 📝 Version History
-
-### v1.3.0 (Current)
-- 🎯 Fixed ball stuck in center - now moves only after shoot
-- 🔫 Added SHOOT button for host player to start the ball
-- ⏱️ Added 3-second animated countdown before game starts
-- 🤝 Improved hello handshake - pings every 1 second until connection
-- 🚪 Fixed exit function (now uses `SpixiAppSdk.back()`)
-- ✅ Both players must click START to begin countdown
-- 🏓 More realistic pong gameplay flow
-
-### v1.2.0
-- ✨ Added hello handshake system for user presence detection
-- 🚀 Optimized network packets (50%+ size reduction)
-- 🔧 Fixed exit button (now uses SDK `back()` method)
-- 📱 Prevented zoom on mobile WebView
-- 🎨 Improved waiting screen UX
-- 📚 Added comprehensive README
-
-### v1.1.0
-- ✨ Added lives system (3 lives per player)
-- 🎮 Added Start Game and Exit buttons
-- 🔄 Improved real-time paddle synchronization
-- 🎨 Updated UI to show lives instead of score
-
-### v1.0.0
-- 🎉 Initial release
-- 🎮 Basic Pong gameplay
-- 👥 Two-player multiplayer
-- 📊 Score-based system
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to:
-- Report bugs
-- Suggest new features
-- Submit pull requests
-- Improve documentation
-
-## 📄 License
-
-Copyright (C) 2025 Baracuda
-
-This app is part of the Spixi Mini Apps ecosystem.
-
-## 👤 Author
-
-**Baracuda**
-
-## 🔗 Links
-
-- [Spixi Messenger](https://www.spixi.io)
-- [Spixi Mini Apps SDK](https://github.com/ixian-platform/Spixi-Mini-Apps)
-- [IXI Labs](https://www.ixian.io)
-
----
-
-Enjoy the game! 🏓
+**Ball Events (13 bytes)**
+*Used for MSG_LAUNCH, MSG_COLLISION, MSG_BOUNCE.*
+```
+[1 byte] Type
+[4 bytes] Timestamp (Uint32)
+[2 bytes] Ball X
+[2 bytes] Ball Y
+[2 bytes] Ball VX (*100)
+[2 bytes] Ball VY (*100)
+```

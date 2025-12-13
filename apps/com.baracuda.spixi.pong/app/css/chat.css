@@ -8,16 +8,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    /* Circle shape */
 }
 
 .btn-danger {
     background: rgba(255, 69, 58, 0.2);
     color: #ff453a;
     border: 1px solid rgba(255, 69, 58, 0.5);
-    border-radius: 24px;
-    padding: 10px 20px;
 }
 
 .btn-danger:active {
@@ -31,32 +27,13 @@
     justify-content: center;
 }
 
-/* In-Game Floating Chat Button */
-.floating-chat-btn {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    z-index: 90;
-    /* Below chat panel (1000) but above game elements */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transition: transform 0.2s, background 0.2s;
-}
-
-.floating-chat-btn:active {
-    transform: scale(0.95);
-    background: rgba(255, 255, 255, 0.2);
-}
-
 /* Status Pill */
 .opponent-status-pill {
-    margin: 15px auto;
+    margin-top: 15px;
     background: rgba(255, 255, 255, 0.1);
     padding: 6px 12px;
     border-radius: 20px;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 8px;
     font-size: 13px;
@@ -79,76 +56,10 @@
     box-shadow: 0 0 5px #30d158;
 }
 
-/* Chat Notification Popup */
-.chat-notification {
-    position: fixed;
-    top: 20px;
-    /* Top of screen for visibility */
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(20, 20, 20, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    z-index: 2000;
-    /* Above everything */
-    min-width: 250px;
-    max-width: 90%;
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    animation: slideDown 0.3s ease-out;
-}
-
-.chat-notification.hidden {
-    display: none;
-}
-
-@keyframes slideDown {
-    from {
-        transform: translate(-50%, -20px);
-        opacity: 0;
-    }
-
-    to {
-        transform: translate(-50%, 0);
-        opacity: 1;
-    }
-}
-
-.notification-icon {
-    font-size: 20px;
-}
-
-.notification-content {
-    flex: 1;
-}
-
-.notification-title {
-    font-size: 11px;
-    font-weight: 700;
-    color: #0a84ff;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-}
-
-.notification-text {
-    font-size: 14px;
-    color: white;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
-}
-
 /* Chat Panel */
 .chat-panel {
     position: fixed;
-    bottom: 80px;
-    /* Higher to clear inputs */
+    bottom: 20px;
     right: 20px;
     width: 320px;
     height: 400px;
@@ -318,10 +229,5 @@
         right: 0;
         left: 0;
         border-radius: 20px 20px 0 0;
-    }
-
-    .floating-chat-btn {
-        bottom: 10px;
-        right: 10px;
     }
 }

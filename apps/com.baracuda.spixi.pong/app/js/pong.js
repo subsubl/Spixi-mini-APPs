@@ -212,6 +212,7 @@ const MSG_BOUNCE = 10;
 const MSG_FULL_RESET = 11;
 const MSG_EXIT = 12;
 const MSG_RESTART = 13;
+const MSG_PADDLE = 14;
 
 // Enable/disable binary protocol (for gradual rollout)
 let useBinaryProtocol = true;
@@ -238,7 +239,20 @@ function encodeStatePacket(frame, paddleY, seq, lastAck, ball) {
 }
 
 /**
- * Encode a ball event packet (launch, bounce, collision)
+ * Encode a paddle update packet (compact)
+ * Layout: [type:1][paddleY:2][seq:2] = 5 bytes
+ */
+function encodePaddlePacket(paddleY, seq) {
+    const buffer = new ArrayBuffer(5);
+    const view = new DataView(buffer);
+    view.setUint8(0, MSG_PADDLE);
+    view.setUint16(1, Math.round(paddleY) & 0xFFFF, true);
+    view.setUint16(3, seq & 0xFFFF, true);
+    return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+
+/**
+ * Encode a simple packet (ping, pong, connect, etc.)
  * Layout: [type:1][timestamp:4][x:2][y:2][vx:2][vy:2] = 13 bytes
  */
 function encodeBallEventPacket(type, timestamp, ball) {
@@ -294,6 +308,9 @@ function decodeBinaryPacket(base64) {
             result.ballY = view.getUint16(7, true);
             result.ballVx = view.getInt16(9, true) / 100;
             result.ballVy = view.getInt16(11, true) / 100;
+        } else if (type === MSG_PADDLE && binary.length >= 5) {
+            result.paddleY = view.getUint16(1, true);
+            result.seq = view.getUint16(3, true);
         } else if (binary.length >= 5) {
             result.data = view.getUint32(1, true);
         }
@@ -496,6 +513,7 @@ let lastDataSent = 0;
 let lastSyncTime = 0;
 let frameCounter = 0;
 let lastSentPaddleY = 0;
+let lastPaddleSendTime = 0;
 let keysPressed = {};
 let touchControlActive = null;
 let wheelVelocity = 0;
@@ -559,6 +577,14 @@ const reusableBallState = { x: 0, y: 0, vx: 0, vy: 0 };
 
 // Message batching
 let pendingMessages = [];
+
+// Chat & Status State
+let isChatOpen = false;
+let checkUnreadMessages = 0;
+let localPlayerStatus = 'lobby'; // 'lobby', 'ready', 'playing'
+let remotePlayerStatus = 'unknown'; // 'unknown', 'lobby', 'ready', 'playing'
+
+
 
 // Critical message retransmission
 let criticalMsgSeq = 0;
@@ -770,6 +796,7 @@ function initGame() {
     canvas.height = CANVAS_HEIGHT;
 
     setupControls();
+    setupChatUI(); // Initialize Chat UI
 
     // Show waiting screen initially with modern classes
     const waitingScreen = document.getElementById('waiting-screen');
@@ -954,6 +981,7 @@ function setupControls() {
 function startGame() {
     gameStartTime = Date.now();
     gameState.gameStarted = true;
+    sendPlayerStatus('playing');
 
     // Determine ball owner based on random number comparison
     // Higher number wins. If equal (rare), compare session IDs
@@ -1167,6 +1195,18 @@ function updatePaddle() {
 
     // Use predicted paddle position for rendering and collision detection
     gameState.localPaddle.y = predictedPaddleY;
+
+    // Send paddle update immediately if changed (throttled to ~30fps)
+    const currentTime = Date.now();
+    if (gameState.localPaddle.y !== lastSentPaddleY && currentTime - lastPaddleSendTime > 30) {
+        if (useBinaryProtocol) {
+            inputSequence++;
+            const packet = encodePaddlePacket(gameState.localPaddle.y, inputSequence);
+            SpixiAppSdk.sendNetworkData(packet);
+            lastSentPaddleY = gameState.localPaddle.y;
+            lastPaddleSendTime = currentTime;
+        }
+    }
 
     // Update wheel handle position to match paddle
     updateWheelPosition();
@@ -1718,6 +1758,7 @@ function endGame(won) {
 
     saveGameState();
     sendEndGame();
+    sendPlayerStatus('lobby');
 }
 
 function restartGame() {
@@ -2426,7 +2467,15 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
         // Check for binary packet first
         if (isBinaryPacket(data)) {
             const binaryMsg = decodeBinaryPacket(data);
-            if (binaryMsg && binaryMsg.type === MSG_STATE) {
+            if (!binaryMsg) return;
+
+            if (binaryMsg.type === MSG_PADDLE) {
+                // Fast Path: Paddle Update
+                remotePaddleTarget = binaryMsg.paddleY;
+                return;
+            }
+
+            if (binaryMsg.type === MSG_STATE) {
                 // Process binary state packet
                 const frame = binaryMsg.frame;
                 const paddleY = binaryMsg.paddleY;
@@ -2571,6 +2620,16 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                 if (msg.origT) {
                     timeSync.handlePong(msg);
                 }
+                break;
+
+            case "chat":
+                // Handle Chat Message
+                if (msg.text) addChatMessage(msg.text, false);
+                break;
+
+            case "status":
+                // Handle Player Status
+                if (msg.state) updateOpponentStatusUI(msg.state);
                 break;
 
             case "launch":
@@ -2747,6 +2806,144 @@ SpixiAppSdk.onStorageData = function (key, value) {
         }
     }
 };
+
+// ==========================================
+// CHAT & STATUS LOGIC
+// ==========================================
+
+function setupChatUI() {
+    // Chat Toggle Buttons
+    // specific buttons only now - waiting screen chat removed
+    const gameOverChatBtn = document.getElementById('gameOverChatBtn');
+    if (gameOverChatBtn) gameOverChatBtn.addEventListener('click', toggleChat);
+
+    // Close Chat Button
+    const closeBtn = document.getElementById('closeChatBtn');
+    if (closeBtn) closeBtn.addEventListener('click', toggleChat);
+
+    // Send Message Button
+    const sendBtn = document.getElementById('sendChatBtn');
+    if (sendBtn) sendBtn.addEventListener('click', sendChatMessage);
+
+    // Input Enter Key
+    const input = document.getElementById('chatInput');
+    if (input) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+    }
+
+    // Exit Button
+    const exitBtn = document.getElementById('waitingExitBtn');
+    if (exitBtn) {
+        exitBtn.addEventListener('click', () => {
+            SpixiAppSdk.back(); // Use proper SDK back method
+        });
+    }
+
+    // Initial Status Broadcast
+    sendPlayerStatus('lobby');
+}
+
+function toggleChat() {
+    const chatPanel = document.getElementById('chat-panel');
+    const waitingBadge = document.getElementById('waitingChatBadge');
+    const gameOverBadge = document.getElementById('gameOverChatBadge');
+
+    isChatOpen = !isChatOpen;
+
+    if (isChatOpen) {
+        chatPanel.classList.remove('chat-hidden');
+        checkUnreadMessages = 0;
+        waitingBadge.classList.add('hidden');
+        gameOverBadge.classList.add('hidden');
+        setTimeout(() => document.getElementById('chatInput').focus(), 300);
+    } else {
+        chatPanel.classList.add('chat-hidden');
+    }
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    // Send to remote
+    SpixiAppSdk.sendNetworkData(JSON.stringify({
+        a: "chat",
+        text: text
+    }));
+
+    // Add to local UI
+    addChatMessage(text, true);
+    input.value = '';
+}
+
+function addChatMessage(text, isMine) {
+    const container = document.getElementById('chatMessages');
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${isMine ? 'mine' : 'theirs'}`;
+    bubble.textContent = text;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+
+    if (!isMine && !isChatOpen) {
+        checkUnreadMessages++;
+        updateChatBadges();
+    }
+}
+
+function updateChatBadges() {
+    const count = checkUnreadMessages > 9 ? '9+' : checkUnreadMessages;
+    ['waitingChatBadge', 'gameOverChatBadge'].forEach(id => {
+        const badge = document.getElementById(id);
+        if (badge) {
+            badge.textContent = count;
+            badge.classList.remove('hidden');
+        }
+    });
+}
+
+function sendPlayerStatus(status) {
+    localPlayerStatus = status;
+    SpixiAppSdk.sendNetworkData(JSON.stringify({
+        a: "status",
+        state: status
+    }));
+}
+
+function updateOpponentStatusUI(status) {
+    const pill = document.getElementById('waitingOpponentStatus');
+    const dot = pill.querySelector('.status-dot');
+    const text = pill.querySelector('.status-text');
+
+    if (pill) {
+        pill.classList.remove('hidden');
+        remotePlayerStatus = status;
+
+        if (status === 'playing') {
+            dot.classList.add('ready');
+            text.textContent = "Opponent is Playing";
+        } else if (status === 'lobby') {
+            dot.classList.remove('ready');
+            text.textContent = "Opponent is in Lobby";
+        } else {
+            dot.classList.remove('ready');
+            text.textContent = "Opponent Status Unknown";
+        }
+    }
+}
+
+// Helper to check if binary
+function isBinaryPacket(str) {
+    // Basic heuristic: check if it looks like base64 and starts with known types
+    if (typeof str !== 'string') return false;
+    // Check for msg type byte at start (base64 encoded first char)
+    // 1 (MSG_STATE) -> A...
+    // 2 (MSG_COLLISION) -> A... (wait, base64 encoding shifts. Need safe check)
+    // Actually, simple JSON check is safer.
+    return !str.trim().startsWith('{');
+}
 
 // Start the app on load
 window.onload = SpixiAppSdk.fireOnLoad;
