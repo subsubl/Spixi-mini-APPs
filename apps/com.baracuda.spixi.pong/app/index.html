@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pong - Multiplayer Game</title>
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/chat.css">
 </head>
 
 <body>
@@ -53,12 +52,6 @@
                     <span class="dot"></span>
                     <span class="dot"></span>
                 </div>
-                <div class="connection-actions">
-                    <button id="waitingExitBtn" class="btn btn-danger">
-                        <span class="btn-text">Exit</span>
-                    </button>
-                </div>
-
             </div>
         </div>
 
@@ -152,12 +145,6 @@
                     </div>
                     <div class="wheel-label">Drag to Control</div>
                 </div>
-                <!-- In-Game Controls -->
-                <button id="inGameChatBtn" class="btn btn-secondary btn-icon-only floating-chat-btn"
-                    aria-label="Open Chat">
-                    <span class="btn-icon">💬</span>
-                    <div id="inGameChatBadge" class="chat-badge hidden"></div>
-                </button>
             </div>
         </div>
 
@@ -179,61 +166,11 @@
                         <span class="stat-value" id="gameDuration">2:34</span>
                     </div>
                 </div>
-
-                <!-- Turn Status / Opponent Status -->
-                <div class="opponent-status-pill hidden" id="gameOverOpponentStatus">
-                    <span class="status-dot"></span>
-                    <span class="status-text">Opponent is in Lobby</span>
-                </div>
-
                 <button id="restartBtn" class="btn btn-primary btn-large">
                     <span class="btn-icon">🎮</span>
                     <span class="btn-text">Play Again</span>
                 </button>
-                <button id="gameOverChatBtn" class="btn btn-secondary btn-large">
-                    <span class="btn-icon">💬</span>
-                    <span class="btn-text">Chat</span>
-                    <div id="gameOverChatBadge" class="chat-badge hidden"></div>
-                </button>
             </div>
-        </div>
-    </div>
-
-    <!-- Chat Notification Popup -->
-    <div id="chatNotificationPopup" class="chat-notification hidden">
-        <div class="notification-icon">💬</div>
-        <div class="notification-content">
-            <div class="notification-title">New Message</div>
-            <div class="notification-text" id="notificationText"></div>
-        </div>
-    </div>
-
-    <!-- Chat Notification Popup -->
-    <div id="chatNotificationPopup" class="chat-notification hidden">
-        <div class="notification-icon">💬</div>
-        <div class="notification-content">
-            <div class="notification-title">New Message</div>
-            <div class="notification-text" id="notificationText"></div>
-        </div>
-    </div>
-
-    <!-- Chat Overlay Panel -->
-    <div id="chat-panel" class="chat-panel chat-hidden">
-        <div class="chat-header">
-            <span class="chat-title">Lobby Chat</span>
-            <button id="closeChatBtn" class="chat-close-btn">×</button>
-        </div>
-        <div class="chat-messages" id="chatMessages">
-            <div class="system-message">Welcome to Pong! Chat is encrypted.</div>
-        </div>
-        <div class="chat-input-area">
-            <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
-            <button id="sendChatBtn" class="chat-send-btn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
-            </button>
         </div>
     </div>
 
