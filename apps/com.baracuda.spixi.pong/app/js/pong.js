@@ -571,14 +571,7 @@ let gameState = {
 // Ball sync state: authority switches between players on each paddle hit
 // Each player simulates ball locally when they have authority (after hitting it)
 
-// Ball interpolation for non-authoritative client (smooth remote ball)
-let ballTarget = {
-    x: CANVAS_WIDTH / 2,
-    y: CANVAS_HEIGHT / 2,
-    vx: 0,
-    vy: 0
-};
-const BALL_LERP_FACTOR = 0.3; // Interpolation factor for smooth ball movement
+
 
 // Dead Reckoning & Error Correction Constants
 const BALL_CORRECTION_FACTOR = 0.1; // Fraction of error to correct per frame (smooth convergence)
@@ -665,62 +658,11 @@ let framesMeasured = 0;
 const reusableStatePacket = { a: "state" };
 const reusableBallState = { x: 0, y: 0, vx: 0, vy: 0 };
 
-// Message batching
-let pendingMessages = [];
-
 // Chat & Status State
 let isChatOpen = false;
 let checkUnreadMessages = 0;
 let localPlayerStatus = 'lobby'; // 'lobby', 'ready', 'playing'
 let remotePlayerStatus = 'unknown'; // 'unknown', 'lobby', 'ready', 'playing'
-
-
-
-// Critical message retransmission
-let criticalMsgSeq = 0;
-const pendingCritical = new Map(); // seqId -> { msg, sentAt, retries }
-const CRITICAL_RETRY_INTERVAL = 1000; // Retry after 1 second (User requested optimization)
-const CRITICAL_MAX_RETRIES = 5; // Increased retries since interval is longer
-
-function queueMessage(msg) {
-    pendingMessages.push(msg);
-}
-
-function flushMessages() {
-    if (pendingMessages.length === 0) return;
-    if (pendingMessages.length === 1) {
-        SpixiAppSdk.sendNetworkData(JSON.stringify(pendingMessages[0]));
-    } else {
-        SpixiAppSdk.sendNetworkData(JSON.stringify({ batch: pendingMessages }));
-    }
-    pendingMessages = [];
-}
-
-function sendCritical(msg) {
-    const seqId = ++criticalMsgSeq;
-    msg.critSeq = seqId;
-    pendingCritical.set(seqId, { msg, sentAt: Date.now(), retries: 0 });
-    SpixiAppSdk.sendNetworkData(JSON.stringify(msg));
-}
-
-function sendCriticalAck(seqId) {
-    SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "critAck", seqId: seqId }));
-}
-
-function checkCriticalRetransmissions() {
-    const now = Date.now();
-    for (const [seqId, entry] of pendingCritical) {
-        if (now - entry.sentAt > CRITICAL_RETRY_INTERVAL) {
-            if (entry.retries < CRITICAL_MAX_RETRIES) {
-                entry.retries++;
-                entry.sentAt = now;
-                SpixiAppSdk.sendNetworkData(JSON.stringify(entry.msg));
-            } else {
-                pendingCritical.delete(seqId); // Give up after max retries
-            }
-        }
-    }
-}
 
 // ===== PREDICTION ROLLBACK =====
 // State history buffer for retroactive correction
@@ -854,11 +796,7 @@ function handleConnectionEstablished() {
         }, 10000);
     }
 
-    // Start critical message retransmission loop (1Hz)
-    // Start critical message retransmission loop (1Hz)
-    if (!criticalMsgInterval) {
-        criticalMsgInterval = setInterval(checkCriticalRetransmissions, 1000);
-    }
+
 
     // Transition to game screen
     const waitingScreen = document.getElementById('waiting-screen');
