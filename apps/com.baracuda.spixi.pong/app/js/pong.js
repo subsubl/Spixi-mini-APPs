@@ -2249,9 +2249,10 @@ function sendGameState() {
                 Math.abs(lastSentBallState.vy - newBallState.vy) > 0.1;
 
             // BANDWIDTH OPTIMIZATION:
-            // Event-Based + 5pps heartbeat for robust sync
-            // 5pps = every 12 frames (60fps / 5 = 12)
-            const needsHeartbeat = frameCounter % 12 === 0;
+            // Event-Based + 5pps heartbeat (200ms) for robust sync
+            // TIME-BASED: Not tied to screen refresh rate
+            const timeSinceBallUpdate = currentTime - (lastBallUpdateTime || 0);
+            const needsHeartbeat = timeSinceBallUpdate >= 200; // 5pps = 200ms
 
             if (velocityChanged || needsHeartbeat) {
                 state.b = newBallState;
