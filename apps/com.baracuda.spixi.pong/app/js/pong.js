@@ -126,10 +126,13 @@ const BALL_SPEED_INCREMENT = 0.4;
 const MAX_LIVES = 3;
 const FRAME_RATE = 60; // Render at 60fps
 // Dynamic network rate variables
-let currentNetworkRate = 33; // Start at 30fps (33ms)
+let currentNetworkRate = 33; // Interval in ms
 const NETWORK_RATE_ACTIVE = 100; // 10fps baseline (hybrid rate)
 const NETWORK_RATE_IDLE = 100; // 10fps when idle
 const NETWORK_RATE_THROTTLED = 66; // 15fps when performance is poor
+
+// Network Throttle (added to base rate based on RTT)
+let networkThrottleDelay = 0;
 
 // Sound system
 let audioContext;
@@ -214,8 +217,8 @@ const MSG_EXIT = 12;
 const MSG_RESTART = 13;
 const MSG_PADDLE = 14;
 
-// Enable/disable binary protocol (for gradual rollout)
-let useBinaryProtocol = true;
+// Binary protocol enabled permanently for State/Paddle updates
+
 
 /**
  * Encode a state packet to binary format
@@ -321,14 +324,7 @@ function decodeBinaryPacket(base64) {
     }
 }
 
-/**
- * Check if data is a binary packet (base64 starting with valid type)
- */
-function isBinaryPacket(data) {
-    if (!data || data.length < 4) return false;
-    // Base64 of binary packets won't start with '{' (which would be 'ey' in base64)
-    return data[0] !== '{' && data[0] !== '[';
-}
+
 
 function initAudioContext() {
     try {
@@ -565,6 +561,7 @@ let pingInterval = null;
 let gameLoopId = null; // requestAnimationFrame ID
 let connectionRetryInterval = null;
 let disconnectCheckInterval = null;
+let criticalMsgInterval = null;
 
 // Performance monitoring
 let lastFrameTime = 0;
@@ -747,16 +744,7 @@ function handleConnectionEstablished() {
         statusLabel.textContent = 'Connected';
     }
 
-    // Start regular ping
-    if (!pingInterval) {
-        pingInterval = setInterval(() => {
-            const currentTime = SpixiTools.getTimestamp();
-            if (currentTime - lastDataSent >= 2) {
-                lastDataSent = currentTime;
-                SpixiAppSdk.sendNetworkData(JSON.stringify({ a: "ping" }));
-            }
-        }, 2000);
-    }
+
 
     // Start disconnect detection (check every 10 seconds)
     if (!disconnectCheckInterval) {
@@ -776,14 +764,9 @@ function handleConnectionEstablished() {
     }
 
     // Start critical message retransmission loop (1Hz)
-    if (!connectionRetryInterval) {
-        // Re-using a variable name or creating new? Let's use a new one or attach to existing flow.
-        // Actually, connectionRetryInterval is cleared above. Let's use a specific one.
-        // But wait, I need to declare it globally first if I want to clear it?
-        // Let's just use a recurring check in 'pingInterval' which is already running?
-        // Ping runs every 2s. User wants 1s.
-        // Let's add specific interval.
-        setInterval(checkCriticalRetransmissions, 1000);
+    // Start critical message retransmission loop (1Hz)
+    if (!criticalMsgInterval) {
+        criticalMsgInterval = setInterval(checkCriticalRetransmissions, 1000);
     }
 
     // Transition to game screen
@@ -1113,7 +1096,8 @@ function gameLoop(timestamp) {
                 } else {
                     // Otherwise use active/idle logic
                     const ballActive = Math.abs(gameState.ball.vx) > 0.1 || Math.abs(gameState.ball.vy) > 0.1;
-                    currentNetworkRate = ballActive ? NETWORK_RATE_ACTIVE : NETWORK_RATE_IDLE;
+                    const baseRate = ballActive ? NETWORK_RATE_ACTIVE : NETWORK_RATE_IDLE;
+                    currentNetworkRate = baseRate + networkThrottleDelay;
                 }
                 frameTimeAccumulator = 0;
                 framesMeasured = 0;
@@ -1210,13 +1194,11 @@ function updatePaddle() {
     // Send paddle update immediately if changed (throttled to ~30fps)
     const currentTime = Date.now();
     if (gameState.localPaddle.y !== lastSentPaddleY && currentTime - lastPaddleSendTime > 30) {
-        if (useBinaryProtocol) {
-            inputSequence++;
-            const packet = encodePaddlePacket(gameState.localPaddle.y, inputSequence);
-            SpixiAppSdk.sendNetworkData(packet);
-            lastSentPaddleY = gameState.localPaddle.y;
-            lastPaddleSendTime = currentTime;
-        }
+        inputSequence++;
+        const packet = encodePaddlePacket(gameState.localPaddle.y, inputSequence);
+        SpixiAppSdk.sendNetworkData(packet);
+        lastSentPaddleY = gameState.localPaddle.y;
+        lastPaddleSendTime = currentTime;
     }
 
     // Update wheel handle position to match paddle
@@ -1431,10 +1413,7 @@ setInterval(() => {
     });
 }, 200); // Check every 200ms
 
-// Check for critical message retransmissions periodically
-setInterval(() => {
-    checkCriticalRetransmissions();
-}, 300); // Check every 300ms
+
 
 function checkCollisions() {
     // Ball owner always on right side
@@ -1803,6 +1782,10 @@ function performFullReset() {
         clearInterval(disconnectCheckInterval);
         disconnectCheckInterval = null;
     }
+    if (criticalMsgInterval) {
+        clearInterval(criticalMsgInterval);
+        criticalMsgInterval = null;
+    }
 
     // Reset all connection state
     connectionEstablished = false;
@@ -1892,6 +1875,7 @@ function exitGame() {
     if (syncInterval) clearInterval(syncInterval);
     if (connectionRetryInterval) clearInterval(connectionRetryInterval);
     if (disconnectCheckInterval) clearInterval(disconnectCheckInterval);
+    if (criticalMsgInterval) clearInterval(criticalMsgInterval);
     if (autoStartTimer) clearTimeout(autoStartTimer);
 
     // Close app using SDK back() helper - this will ask Spixi to go back/exit the app
@@ -2240,66 +2224,28 @@ function sendGameState() {
             lastSentBallState = null;
         }
 
-        // Always send state packet (at minimum contains action type)
-        if (useBinaryProtocol) {
-            // Binary protocol: encode as compact binary
-            const ball = state.b ? {
-                x: state.b.x,
-                y: state.b.y,
-                vx: state.b.vx / 100, // Convert back from integer
-                vy: state.b.vy / 100
-            } : null;
-            const binaryData = encodeStatePacket(
-                frameCounter,
-                paddleY,
-                inputSequence,
-                lastAcknowledgedSequence,
-                ball
-            );
-            SpixiAppSdk.sendNetworkData(binaryData);
-        } else {
-            // JSON fallback
-            SpixiAppSdk.sendNetworkData(JSON.stringify(state));
-        }
+        // Always send state packet
+        // Binary protocol: encode as compact binary
+        const ball = state.b ? {
+            x: state.b.x,
+            y: state.b.y,
+            vx: state.b.vx / 100, // Convert back from integer
+            vy: state.b.vy / 100
+        } : null;
+        const binaryData = encodeStatePacket(
+            frameCounter,
+            paddleY,
+            inputSequence,
+            lastAcknowledgedSequence,
+            ball
+        );
+        SpixiAppSdk.sendNetworkData(binaryData);
     } catch (e) {
         console.error("Error sending game state:", e);
     }
 }
 
-/**
- * Server reconciliation: Recompute paddle position from authoritative state + unacknowledged inputs
- * Called when receiving state update from remote player with their last acknowledged sequence.
- * This ensures smooth gameplay even when inputs arrive out of order or are delayed.
- * 
- * Process:
- * 1. Receive remote's acknowledgment of which inputs they processed (lastAckSeq)
- * 2. Accept their authoritative paddle position (authPaddleY)
- * 3. Replay all pending inputs that came after their acknowledgment
- * 4. Result: our predicted state stays in sync with their authoritative view
- */
-function reconcilePaddleState(authPaddleY, lastAckSeq) {
-    // Update with authoritative state from remote player
-    lastAuthorativePaddleY = authPaddleY;
-    lastAuthorativeSequence = lastAckSeq;
 
-    // Set predicted position to authoritative, then replay unacknowledged inputs
-    predictedPaddleY = authPaddleY;
-
-    // Replay all inputs not yet acknowledged by remote
-    for (const input of pendingInputs) {
-        if (input.seq > lastAckSeq) {
-            // Recalculate paddle position as if this input were applied to authoritative state
-            // This simulates what the remote player will see after processing our input
-            predictedPaddleY = input.paddleY;
-        }
-    }
-
-    // Ensure predicted paddle stays within bounds after reconciliation
-    predictedPaddleY = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, predictedPaddleY));
-
-    // Update game state to reflect reconciled position
-    gameState.localPaddle.y = predictedPaddleY;
-}
 
 /**
  * Frame counter sync: Validate incoming packets are not out of order
@@ -2466,11 +2412,11 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
         // Adaptive network rate based on RTT
         const rtt = timeSync.rtt || 100;
         if (rtt < 50) {
-            currentNetworkRate = 50;  // Low latency: 20pps
+            networkThrottleDelay = 0;   // Low latency
         } else if (rtt < 150) {
-            currentNetworkRate = 100; // Medium: 10pps
+            networkThrottleDelay = 50;  // Medium latency (+50ms interval)
         } else {
-            currentNetworkRate = 200; // High latency: 5pps
+            networkThrottleDelay = 100; // High latency (+100ms interval)
         }
     }
 
