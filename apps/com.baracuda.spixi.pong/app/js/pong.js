@@ -2009,7 +2009,7 @@ function sendBallEvent(type) {
     lastDataSent = SpixiTools.getTimestamp();
 }
 
-function handleBallEvent(msg, takeAuthority = false) {
+function handleBallEvent(msg, isAction = false) {
     // Extract state
     let cookedX, cookedY, cookedVx, cookedVy;
 
@@ -2091,17 +2091,27 @@ function handleBallEvent(msg, takeAuthority = false) {
         }
     }
 
-    // 3. Apply State
-    // If taking authority, SNAP to predicted position (no error correction needed, we are starting fresh)
-    if (takeAuthority) {
+    // 3. Authority & State Application
+    if (isAction) {
+        // ACTION EVENT (Launch/Collision):
+        // Remote player has taken Action -> They have Authority.
+        // We must DROP authority and SNAP to their state to match physics.
+        gameState.hasActiveBallAuthority = false;
+
         gameState.ball.x = predictedX;
         gameState.ball.y = predictedY;
         gameState.ball.vx = predictedVx;
         gameState.ball.vy = predictedVy;
         gameState.ballCorrection.x = 0;
         gameState.ballCorrection.y = 0;
-        gameState.hasActiveBallAuthority = true;
-        // console.log("Taking authority - snapped ball to:", predictedX, predictedY);
+        // console.log("Remote Action - Yielded Authority & Snapped");
+        return;
+    }
+
+    // PERIODIC UPDATE (Bounce/State):
+    // If we have authority, IGNORE remote updates (prevent fighting/lag).
+    // Exception: If our velocity is zero (waiting), accept update.
+    if (gameState.hasActiveBallAuthority) {
         return;
     }
 
