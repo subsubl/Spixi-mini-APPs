@@ -2288,29 +2288,36 @@ function sendGameState() {
             const b = gameState.ball;
 
             // Use reusable ball state object
-            reusableBallState.x = Math.round(CANVAS_WIDTH - b.x); // Mirror X
-            reusableBallState.y = Math.round(b.y);
-            reusableBallState.vx = Math.round(-b.vx * 100); // Integer velocity
-            reusableBallState.vy = Math.round(b.vy * 100);
+            // Fix: Do NOT scale by 100 here. encodeStatePacket does the scaling.
+            // Also do NOT round to Int here, allow encodeStatePacket to handle precision.
+            reusableBallState.x = CANVAS_WIDTH - b.x; // Mirror X
+            reusableBallState.y = b.y;
+            reusableBallState.vx = -b.vx; // Mirror Vx
+            reusableBallState.vy = b.vy;
 
             const newBallState = reusableBallState;
 
             // Check for significant velocity change (bounce/hit) to force update
             const velocityChanged = !lastSentBallState ||
-                Math.abs(lastSentBallState.vx - newBallState.vx) > 5 || // > 0.05 float diff
-                Math.abs(lastSentBallState.vy - newBallState.vy) > 5;
+                Math.abs(lastSentBallState.vx - newBallState.vx) > 0.1 ||
+                Math.abs(lastSentBallState.vy - newBallState.vy) > 0.1;
 
             // BANDWIDTH OPTIMIZATION:
             // Switch to Event-Based updates (like p2p-pong). 
             // Only send when physics change (bounce/hit) or rare heartbeat (1s)
             // This significantly reduces packet count.
-            const ballUpdateInterval = 1000; // 1pps heartbeat
+            // const ballUpdateInterval = 1000; // 1pps heartbeat
 
             // Send ball at 10pps OR on velocity change (event)
-            const timeSinceLastBallUpdate = currentTime - (lastBallUpdateTime || 0);
-            if (timeSinceLastBallUpdate >= ballUpdateInterval || velocityChanged) {
-                lastSentBallState = { ...newBallState };
+            // const timeSinceLastBallUpdate = currentTime - (lastBallUpdateTime || 0);
+            if (velocityChanged || frameCounter % 6 === 0) { // Send at least every 6 frames (~10pps)
                 state.b = newBallState;
+                lastSentBallState = {
+                    x: newBallState.x,
+                    y: newBallState.y,
+                    vx: newBallState.vx,
+                    vy: newBallState.vy
+                };
                 lastBallUpdateTime = currentTime;
 
                 // If we were waiting to relinquish authority (after collision), do it now
@@ -2335,8 +2342,8 @@ function sendGameState() {
         const ball = state.b ? {
             x: state.b.x,
             y: state.b.y,
-            vx: state.b.vx / 100, // Convert back from integer
-            vy: state.b.vy / 100
+            vx: state.b.vx, // Pass raw float (encodeStatePacket does *100)
+            vy: state.b.vy
         } : null;
         const binaryData = encodeStatePacket(
             frameCounter,
