@@ -2623,11 +2623,17 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
             }
 
             if (binaryMsg.type === MSG_COLLISION) {
-                if (binaryMsg.timestamp) {
+                if (binaryMsg.t) {
                     handleBallEvent(binaryMsg);
+
+                    // DYNAMIC AUTHORITY:
+                    // Opponent just hit the ball and relinquished authority.
+                    // We must now take authority to simulate physics and detect our own collision.
+                    gameState.hasActiveBallAuthority = true;
+
                     // Remote collision validation...
-                    processRetroactiveCollision(binaryMsg.timestamp, binaryMsg.frame, binaryMsg.seq, {
-                        x: binaryMsg.ballX, // Wait, decoder returns ballX/Y not embedded obj?
+                    processRetroactiveCollision(binaryMsg.t, binaryMsg.frame, binaryMsg.seq, {
+                        x: binaryMsg.ballX,
                         y: binaryMsg.ballY,
                         vx: binaryMsg.ballVx,
                         vy: binaryMsg.ballVy
