@@ -1067,7 +1067,7 @@ function resetBallPosition() {
 }
 
 function launchBall() {
-    if (gameState.waitingForServe && gameState.isBallOwner) {
+    if (gameState.waitingForServe && gameState.isServer) {
         document.getElementById('shootBtn').style.display = 'none';
         document.getElementById('status-text').textContent = 'Game On!';
         playLaunchSound();
@@ -1075,25 +1075,29 @@ function launchBall() {
         gameState.waitingForServe = false;
         gameState.hasActiveBallAuthority = true;
 
-        // Initialize ball velocity - always shoot toward opponent (left)
+        // Initialize ball velocity - shoot toward opponent based on MY side
         const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
-        gameState.ball.vx = -Math.cos(angle) * BALL_SPEED_INITIAL; // Always negative (toward left)
+        if (gameState.isBallOwner) {
+            // I'm on right - shoot left
+            gameState.ball.vx = -Math.cos(angle) * BALL_SPEED_INITIAL;
+        } else {
+            // I'm on left - shoot right
+            gameState.ball.vx = Math.cos(angle) * BALL_SPEED_INITIAL;
+        }
         gameState.ball.vy = Math.sin(angle) * BALL_SPEED_INITIAL;
 
         // Notify other player with ball velocity included
         const b = gameState.ball;
-        // Use local time for launch event (receiver syncs to this)
         const launchTime = Date.now();
 
         SpixiAppSdk.sendNetworkData(encodeBallEventPacket(MSG_LAUNCH, launchTime, {
             x: Math.round(CANVAS_WIDTH - b.x),
             y: Math.round(b.y),
-            vx: Math.round(-b.vx * 100),
-            vy: Math.round(b.vy * 100)
+            vx: -b.vx, // encoder handles scaling
+            vy: b.vy
         }));
         lastDataSent = SpixiTools.getTimestamp();
         lastSyncTime = 0;
-        // sendGameState(); // No longer needed for ball, but useful for paddle
     }
 }
 
@@ -1163,13 +1167,18 @@ function gameLoop(timestamp) {
                 }
             } else if (gameState.waitingForServe) {
                 // Ball waiting for serve - keep attached to serving paddle
-                if (gameState.isBallOwner) {
-                    // Ball owner on right
-                    gameState.ball.x = CANVAS_WIDTH - 20 - PADDLE_WIDTH - BALL_SIZE;
+                if (gameState.isServer) {
+                    // I'm the server - ball follows my paddle
+                    if (gameState.isBallOwner) {
+                        // I'm on right
+                        gameState.ball.x = CANVAS_WIDTH - 20 - PADDLE_WIDTH - BALL_SIZE;
+                    } else {
+                        // I'm on left
+                        gameState.ball.x = 20 + PADDLE_WIDTH + BALL_SIZE;
+                    }
                     gameState.ball.y = gameState.localPaddle.y + PADDLE_HEIGHT / 2;
                 }
-                // Non-owner: Do nothing. Let network updates (enabled in v3.11.1) control ball pos.
-                // Previously this forced ball to local paddle, hiding the server's ball.
+                // Non-server: Let network updates control ball pos.
             }
         } else {
             // We don't have authority - ALWAYS interpolate toward target
