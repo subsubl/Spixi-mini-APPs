@@ -2574,7 +2574,10 @@ SpixiAppSdk.onNetworkData = function (senderAddress, data) {
                             vx: Math.round(binaryMsg.ballVx * 100),
                             vy: Math.round(binaryMsg.ballVy * 100)
                         },
-                        t: Date.now() // Use current time as timestamp
+                        // Fix for jitter: Compensate for latency!
+                        // The state packet was sent 'rtt/2' ms ago.
+                        // We must backdate the event time so handleBallEvent calculates correct dt.
+                        t: Date.now() - ((timeSync.rtt || 50) / 2)
                     };
                     handleBallEvent(ballMsg);
                 }
