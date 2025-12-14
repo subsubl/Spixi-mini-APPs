@@ -2702,3 +2702,4 @@ function updateLivesDisplay() {
 
     // Start the app on load
     window.onload = SpixiAppSdk.fireOnLoad;
+}
