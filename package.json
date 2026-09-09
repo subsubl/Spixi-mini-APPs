@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Baracuda Spixi Mini Apps Collection",
   "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "test": "node test-apps.mjs",
     "sync-sdk": "node sync-sdk.mjs"
