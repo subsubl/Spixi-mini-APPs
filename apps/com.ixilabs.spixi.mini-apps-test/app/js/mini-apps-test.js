@@ -11,77 +11,30 @@
 // MIT License for more details.
 
 var protocolId = "com.ixilabs.spixi.mini-apps-test";
+var appSessionId = "";
+var remotePlayers = [];
 
-function storageDataTest() {
-    var onStorageData1 = function (key, val) {
-        if (key != "testKey") {
-            alert("Storage key is '" + key + "', expecting 'testKey' ");
+async function storageDataTest() {
+    let testValues = [
+        { table: 'main', key: "testKey", value: "testValue" },        
+        { table: 'main', key: "testKey", value: "testValue2" },
+        { table: 'test', key: "testKey", value: "testValue" },   
+        { table: 'main', key: "testKey3", value: "testValue3" },
+        { table: 'main', key: "testKey", value: "null" }
+    ];
+
+    for (var i in testValues) {
+        let test = testValues[i];
+        await SpixiAppSdk.setStorageData(test.table, test.key, test.value);
+        let retrievedValue = await SpixiAppSdk.getStorageData(test.table, test.key);
+        if (retrievedValue != test.value) {
+            alert(`Storage test failed for table='${test.table}', key='${test.key}'. Expected '${test.value}', got '${retrievedValue}'`);
+            return;
         }
-        val = atob(val);
-        if (val != "testValue") {
-            alert("Storage value is '" + val + "', expecting 'testValue' ");
-        }
 
-        var onStorageData2 = function (key, val) {
-            if (key != "testKey") {
-                alert("Storage key is '" + key + "', expecting 'testKey' ");
-            }
-            val = atob(val);
-            if (val != "testValue2") {
-                alert("Storage value is '" + val + "', expecting 'testValue2' ");
-            }
-
-            var onStorageData3 = function (key, val) {
-                if (key != "testKey3") {
-                    alert("Storage key is '" + key + "', expecting 'testKey3' ");
-                }
-                val = atob(val);
-                if (val != "testValue3") {
-                    alert("Storage value is '" + val + "', expecting 'testValue3' ");
-                }
-
-                var onStorageData4 = function (key, val) {
-                    if (key != "testKey") {
-                        alert("Storage key is '" + key + "', expecting 'testKey' ");
-                    }
-                    if (val != 'null') {
-                        alert("Storage value is '" + val + "', expecting 'null' ");
-                    }
-
-                    alert("All tests have passed.");
-                };
-                setDataKey("testKey", null, onStorageData4)
-            };
-            setDataKey("testKey3", "testValue3", onStorageData3)
-        };
-        setDataKey("testKey", "testValue2", onStorageData2)
-    };
-    setDataKey("testKey", "testValue", onStorageData1)
-}
-
-function setDataKey(key, value, onStorageData) {
-    if (value != null) {
-        value = btoa(value);
     }
-    SpixiAppSdk.setStorageData(key, value);
-    if (onStorageData == undefined) {
-        onStorageData = function (key, value) {
-            appSdkDataReceived("onStorageData", key + "=" + atob(value));
-        };
-    }
-    setTimeout(function () {
-        SpixiAppSdk.onStorageData = onStorageData;
-        SpixiAppSdk.getStorageData(key);
-    }, 0);
-}
 
-function getDataKey(key) {
-
-    SpixiAppSdk.setStorageData("testKey", null);
-    SpixiAppSdk.onStorageData = function (key, value) {
-        appSdkDataReceived("onStorageData", key + "=" + atob(value));
-    };
-    SpixiAppSdk.getStorageData(key);
+    alert("All tests have passed.");
 }
 
 function appSdkDataReceived(type, data) {
@@ -92,10 +45,18 @@ function sendNetworkProtocolData(data) {
     SpixiAppSdk.sendNetworkProtocolData(protocolId, data);
 }
 
-
-SpixiAppSdk.onStorageData = function (key, value) { appSdkDataReceived("onStorageData", key + "=" + value); };
+SpixiAppSdk.onInit = function (sessionId, userAddress, ...remoteAddresses) {
+    appSessionId = sessionId;
+    remotePlayers = remoteAddresses;
+    appSdkDataReceived("onInit", sessionId + " " + userAddress + " " + remoteAddresses.join(", "));
+    document.getElementById("sendTransactionBtn").innerHTML = "Send 1 IXI to " + remotePlayers[0];
+}
 SpixiAppSdk.onNetworkData = function (senderAddress, data) { appSdkDataReceived("onNetworkData", senderAddress + "=" + data); };
 SpixiAppSdk.onNetworkProtocolData = function (senderAddress, protocolId, data) { appSdkDataReceived("onNetworkProtocolData", senderAddress + "=" + protocolId + ":" + data); };
 SpixiAppSdk.onRequestAccept = function (data) { appSdkDataReceived("onRequestAccept", data); };
 SpixiAppSdk.onRequestReject = function (data) { appSdkDataReceived("onRequestReject", data); };
 SpixiAppSdk.onAppEndSession = function (data) { appSdkDataReceived("onAppEndSession", data); };
+SpixiAppSdk.onTransactionReceived = function (senderAddress, amount, txid, data, verified) { appSdkDataReceived("onTransactionReceived", senderAddress + ": " + amount + " " + txid + " " + data + " " + verified); };
+SpixiAppSdk.onPaymentSent = function (recipientAddress, amount, txid, data, verified) { appSdkDataReceived("onPaymentSent", recipientAddress + ": " + amount + " " + txid + " " + data + " " + verified); };
+
+window.onload = SpixiAppSdk.fireOnLoad;

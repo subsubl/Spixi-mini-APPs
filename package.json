@@ -1,30 +1,13 @@
 {
-  "name": "spixi-mini-app-packer",
-  "version": "1.2.0",
-  "description": "Command-line tool for packing Spixi Mini Apps",
-  "main": "pack-app.js",
-  "bin": {
-    "pack-spixi-app": "./pack-app.js"
-  },
+  "name": "spixi-mini-apps-catalog",
+  "version": "1.0.0",
+  "description": "Baracuda Spixi Mini Apps Collection",
+  "type": "module",
   "scripts": {
-    "pack": "node pack-app.js",
-    "start": "node server.js",
-    "test": "mocha --recursive --exit"
+    "test": "node test-apps.mjs",
+    "sync-sdk": "node sync-sdk.mjs"
   },
-  "keywords": [
-    "spixi",
-    "mini-apps",
-    "packer",
-    "ixian"
-  ],
-  "author": "IXI Labs",
-  "license": "MIT",
-  "dependencies": {
-    "jszip": "^3.10.1",
-    "mqtt": "^5.14.1"
-  },
-  "devDependencies": {
-    "chai": "^4.3.7",
-    "mocha": "^10.2.0"
-  }
+  "keywords": ["spixi", "ixian", "mini-apps", "baracuda"],
+  "author": "Baracuda",
+  "license": "MIT"
 }
