@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protocol: Eclipse - Asymmetric Co-Op Escape</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="game-app" class="theme-dark">
+        <!-- Top Status Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <span class="logo-icon">📡</span>
+                <h1 class="game-title">PROTOCOL: ECLIPSE</h1>
+                <span id="role-badge" class="badge badge-operative">OPERATIVE</span>
+            </div>
+            
+            <div class="header-center">
+                <div id="p2p-status" class="p2p-status">
+                    <span class="status-dot"></span>
+                    <span id="status-text">P2P Connecting...</span>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <button id="btn-swap-role" class="btn btn-sm btn-outline">Swap Role</button>
+                <button id="btn-restart-game" class="btn btn-sm btn-danger">Reset Game</button>
+            </div>
+        </header>
+
+        <!-- Role Choice / Lobby Screen -->
+        <div id="lobby-screen" class="screen active">
+            <div class="lobby-card">
+                <h2>ASYMMETRIC ESCAPE INITIATION</h2>
+                <p class="subtitle">Mandatory 2-Player Cooperative Security Clearance</p>
+
+                <div class="role-cards">
+                    <div class="role-card" data-role="operative">
+                        <div class="role-icon">🤿</div>
+                        <h3>OPERATIVE</h3>
+                        <p class="role-desc">First-Person 3D Ground View. Physical wire sockets, manual pressure valves, and biometric cipher keypads.</p>
+                        <button class="btn btn-primary select-role-btn" data-role="operative">Select Operative</button>
+                    </div>
+
+                    <div class="role-card" data-role="dispatcher">
+                        <div class="role-icon">🖥️</div>
+                        <h3>DISPATCHER</h3>
+                        <p class="role-desc">Tactical 2D CRT Command Terminal. Blueprint diagnostics, frequency lookup tables, pressure vent controls, cipher decoder.</p>
+                        <button class="btn btn-success select-role-btn" data-role="dispatcher">Select Dispatcher</button>
+                    </div>
+                </div>
+
+                <div class="lobby-note">
+                    <p>💡 <strong>Rule:</strong> Neither player must view the other's screen. Voice communication or text messaging required!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Operative Viewport (3D / First Person Canvas) -->
+        <div id="operative-viewport" class="viewport screen">
+            <div class="hud-overlay">
+                <div class="hud-top">
+                    <div class="hud-box">SECTOR 7-B AIRLOCK</div>
+                    <div id="op-task-indicator" class="hud-box highlight">CURRENT OBJECTIVE: ALIGN FREQUENCY</div>
+                </div>
+            </div>
+
+            <!-- 3D Interactive Canvas -->
+            <canvas id="op-canvas" width="800" height="450"></canvas>
+
+            <!-- Operative Interactive Panels -->
+            <div class="op-controls-panel">
+                <!-- Loop 1 Panel: Frequency & Wires -->
+                <div id="op-loop1-panel" class="puzzle-panel active">
+                    <div class="panel-header">⚡ LOOP 1: WAVEFORM & CIRCUIT CALIBRATION</div>
+                    <div class="loop1-grid">
+                        <div class="dial-box">
+                            <label>Frequency Dial</label>
+                            <input type="range" id="op-freq-slider" min="100" max="999" value="250">
+                            <span id="op-freq-val" class="digital-readout">250 Hz</span>
+                        </div>
+                        <div class="wires-box">
+                            <label>Wire Patch Order</label>
+                            <div class="wire-buttons">
+                                <button class="btn-wire wire-red" data-color="RED">RED</button>
+                                <button class="btn-wire wire-green" data-color="GREEN">GREEN</button>
+                                <button class="btn-wire wire-blue" data-color="BLUE">BLUE</button>
+                            </div>
+                            <div id="op-wire-status" class="status-msg">Sequence: Empty</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loop 2 Panel: Valves -->
+                <div id="op-loop2-panel" class="puzzle-panel">
+                    <div class="panel-header">💨 LOOP 2: PRESSURE VALVE RELEASE</div>
+                    <div class="valves-grid">
+                        <div class="valve-gauge">
+                            <span>Chamber Pressure</span>
+                            <div class="gauge-bar"><div id="gauge-fill" class="gauge-fill" style="width: 0%;"></div></div>
+                            <span id="gauge-val" class="digital-readout">0 PSI</span>
+                        </div>
+                        <div class="valve-buttons">
+                            <button id="op-valve-a" class="btn-valve">HOLD VALVE A</button>
+                            <button id="op-valve-b" class="btn-valve">HOLD VALVE B</button>
+                            <button id="op-valve-c" class="btn-valve">HOLD VALVE C</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loop 3 Panel: Biometric Keypad -->
+                <div id="op-loop3-panel" class="puzzle-panel">
+                    <div class="panel-header">🔐 LOOP 3: BIOMETRIC CIPHER KEYPAD</div>
+                    <div class="keypad-grid">
+                        <div class="glyph-display">
+                            <span>Displayed Cipher Glyphs:</span>
+                            <div id="op-glyphs" class="glyphs-box">Alpha • Delta • Sigma • 7</div>
+                        </div>
+                        <div class="keypad-input-box">
+                            <input type="text" id="op-keypad-code" maxlength="4" placeholder="Enter 4-Digit Code" readonly>
+                            <div class="numpad">
+                                <button class="btn-num">1</button><button class="btn-num">2</button><button class="btn-num">3</button>
+                                <button class="btn-num">4</button><button class="btn-num">5</button><button class="btn-num">6</button>
+                                <button class="btn-num">7</button><button class="btn-num">8</button><button class="btn-num">9</button>
+                                <button id="btn-num-clr" class="btn-num btn-warn">CLR</button><button class="btn-num">0</button><button id="btn-num-ent" class="btn-num btn-success">ENT</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dispatcher Viewport (2D Tactical CRT Terminal) -->
+        <div id="dispatcher-viewport" class="viewport screen">
+            <div class="crt-screen">
+                <div class="crt-header">
+                    <span>COMMAND TERMINAL v4.09</span>
+                    <span>DIAGNOSTIC STATUS: ONLINE</span>
+                    <span id="disp-timer">TIME: 00:00</span>
+                </div>
+
+                <!-- Terminal Tabs -->
+                <div class="terminal-tabs">
+                    <button class="term-tab active" data-tab="tab-freq">⚡ Electrical Blueprint</button>
+                    <button class="term-tab" data-tab="tab-pressure">💨 Pressure Override</button>
+                    <button class="term-tab" data-tab="tab-cipher">🔐 Cipher Decoder</button>
+                    <button class="term-tab" data-tab="tab-logs">📡 P2P Data Stream</button>
+                </div>
+
+                <!-- Tab Content 1: Electrical Blueprint -->
+                <div id="tab-freq" class="tab-content active">
+                    <div class="grid-2col">
+                        <div class="terminal-card">
+                            <h3>MASTER FREQUENCY TARGETS</h3>
+                            <p class="term-desc">Instruct Operative to patch wires in correct order and set target frequency.</p>
+                            <div class="target-box">
+                                <div>Target Frequency: <strong id="disp-target-freq" class="text-accent">432 Hz</strong></div>
+                                <div>Required Wire Patch Order: <strong id="disp-wire-order" class="text-accent">GREEN ➔ RED ➔ BLUE</strong></div>
+                            </div>
+                            <div class="term-actions">
+                                <button id="disp-send-pulse" class="btn btn-primary">Transmit Pulse Override</button>
+                            </div>
+                        </div>
+
+                        <div class="terminal-card">
+                            <h3>TELEMETRY MONITOR</h3>
+                            <div class="telemetry-item">
+                                <span>Operative Freq:</span> <span id="disp-op-freq" class="readout">250 Hz</span>
+                            </div>
+                            <div class="telemetry-item">
+                                <span>Wire Status:</span> <span id="disp-op-wire" class="readout">PENDING</span>
+                            </div>
+                            <div class="telemetry-item">
+                                <span>Calibration Lock:</span> <span id="disp-loop1-lock" class="badge badge-warn">UNLOCKED</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content 2: Pressure Venting -->
+                <div id="tab-pressure" class="tab-content">
+                    <div class="grid-2col">
+                        <div class="terminal-card">
+                            <h3>PRESSURE VENT OVERRIDE</h3>
+                            <p class="term-desc">Instruct Operative to hold specific valve when chamber pressure hits target.</p>
+                            <div class="target-box">
+                                <div>Target Valve to Hold: <strong id="disp-target-valve" class="text-accent">VALVE B</strong></div>
+                                <div>Required Vent Pressure: <strong id="disp-target-psi" class="text-accent">75 PSI (± 5)</strong></div>
+                            </div>
+                            <div class="term-actions">
+                                <button id="disp-trigger-vent" class="btn btn-danger btn-lg">TRIGGER EMERGENCY VENT OVERRIDE</button>
+                            </div>
+                        </div>
+
+                        <div class="terminal-card">
+                            <h3>AIRLOCK SENSORS</h3>
+                            <div class="telemetry-item">
+                                <span>Live Chamber Pressure:</span> <span id="disp-op-psi" class="readout">0 PSI</span>
+                            </div>
+                            <div class="telemetry-item">
+                                <span>Active Operative Valve:</span> <span id="disp-op-valve" class="readout">NONE</span>
+                            </div>
+                            <div class="telemetry-item">
+                                <span>Airlock Seal:</span> <span id="disp-loop2-lock" class="badge badge-warn">SEALED</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content 3: Cipher Decoder -->
+                <div id="tab-cipher" class="tab-content">
+                    <div class="grid-2col">
+                        <div class="terminal-card">
+                            <h3>BIOMETRIC CIPHER MATRIX</h3>
+                            <p class="term-desc">Ask Operative for displayed glyphs, then enter them below to generate 4-digit code.</p>
+                            <div class="cipher-table">
+                                <div>Glyph 1: Alpha ➔ <strong>8</strong></div>
+                                <div>Glyph 2: Delta ➔ <strong>4</strong></div>
+                                <div>Glyph 3: Sigma ➔ <strong>1</strong></div>
+                                <div>Glyph 4: Seven ➔ <strong>9</strong></div>
+                            </div>
+                            <div class="cipher-calc">
+                                <label>Calculated Auth Code:</label>
+                                <div id="disp-calc-code" class="digital-readout">8419</div>
+                                <button id="disp-send-auth" class="btn btn-success mt-2">Authorize Authorization Token</button>
+                            </div>
+                        </div>
+
+                        <div class="terminal-card">
+                            <h3>VAULT DOOR LOCK STATUS</h3>
+                            <div class="telemetry-item">
+                                <span>Glyphs Reported:</span> <span id="disp-op-glyphs" class="readout">Alpha • Delta • Sigma • 7</span>
+                            </div>
+                            <div class="telemetry-item">
+                                <span>Auth Token Sent:</span> <span id="disp-token-sent" class="readout">NO</span>
+                            </div>
+                            <div class="telemetry-item">
+                                <span>Vault Lock:</span> <span id="disp-loop3-lock" class="badge badge-warn">LOCKED</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content 4: P2P Logs -->
+                <div id="tab-logs" class="tab-content">
+                    <div class="terminal-card">
+                        <h3>SPIXI P2P DATA STREAM LOG</h3>
+                        <div id="disp-log-stream" class="log-stream">
+                            <div>[SYSTEM] Terminal online. Awaiting P2P sync...</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Victory Modal -->
+        <div id="victory-screen" class="screen">
+            <div class="victory-card">
+                <div class="trophy-icon">🏆</div>
+                <h2>FACILITY ESCAPE SUCCESSFUL!</h2>
+                <p>All 3 security barriers bypassed through flawless coordination.</p>
+                <div id="victory-stats" class="victory-stats">
+                    <div>Completion Time: <strong id="vic-time">02:45</strong></div>
+                    <div>P2P Sync Messages: <strong id="vic-msgs">34</strong></div>
+                </div>
+                <button id="btn-play-again" class="btn btn-primary btn-lg mt-4">Play Again</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/spixi-app-sdk.js"></script>
+    <script src="js/spixi-tools.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

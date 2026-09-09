@@ -1,0 +1,11 @@
+caVersion = 0
+id = com.baracuda.spixi.protocol-eclipse
+publisher = Baracuda
+name = Protocol: Eclipse
+version = 1.0.0
+description = Asymmetric 2-player cooperative puzzle escape game. Operative on ground vs Dispatcher in tactical command.
+category = Games
+capabilities = multiUser
+minUsers = 2
+maxUsers = 2
+icon = icon.png
