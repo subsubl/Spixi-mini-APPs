@@ -1,0 +1,12 @@
+caVersion = 0
+id = com.baracuda.spixi.protocol-eclipse
+publisher = Baracuda
+name = Protocol: Eclipse
+version = 1.1.0
+capabilities = multiUser
+minUsers = 2
+maxUsers = 2
+image = https://raw.githubusercontent.com/subsubl/Spixi-mini-APPs/feat/protocol-eclipse-v1.1-native-validation/apps/com.baracuda.spixi.protocol-eclipse/dist/com.baracuda.spixi.protocol-eclipse.png
+contentUrl = https://raw.githubusercontent.com/subsubl/Spixi-mini-APPs/feat/protocol-eclipse-v1.1-native-validation/apps/com.baracuda.spixi.protocol-eclipse/dist/com.baracuda.spixi.protocol-eclipse.zspixiapp
+checksum = 0118a3263aa3216c370f8df5f69bccc509eb224a32e466220ec5b51d87c66dcf
+contentSize = 907949

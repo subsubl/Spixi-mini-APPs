@@ -1,0 +1,1537 @@
+diff --git a/apps/com.baracuda.spixi.protocol-eclipse/README.md b/apps/com.baracuda.spixi.protocol-eclipse/README.md
+new file mode 100644
+index 0000000..e9344bd
+--- /dev/null
++++ b/apps/com.baracuda.spixi.protocol-eclipse/README.md
+@@ -0,0 +1,44 @@
++# Protocol: Eclipse 1.1.0 — native acceptance pending
++
++Lightweight two-player Spixi mini app. Operative manipulates instruments; Dispatcher provides clues and overrides. HTML/CSS/Canvas 2D/JS only, no build-time dependencies in the app.
++
++## Changes
++- Fixed session host validates gameplay, timers and pressure, independently of gameplay-role swaps.
++- Randomized frequency, wires, valve and glyph dictionary; shared victory/failure/restart.
++- Periodic snapshots restore a reloaded guest; host page reload starts a new round (no persistent host recovery).
++- Mobile layout, keyboard/pointer valve release, 44px buttons, background rendering suspension.
++- Optional WebRTC audio; Spixi `sendNetworkData(data, recipientAddress)` carries signaling only.
++- Explicit microphone opt-in, mute/disable, timeout and teardown; configurable S2 STUN URL.
++
++## SDK contract
++Bundled SDK unchanged. Call `fireOnLoad()` once at DOM ready; Spixi calls `onInit(sessionId, userAddress, ...remoteAddresses)`. Receive via `onNetworkData(senderAddress, data)`; teardown on `onAppEndSession`.
++Official SDK 0.51 uses `ixian:onload` and base64-encoded `xa:` actions. Tests execute both bundled and official SDK implementations. Browser tests replace ONLY the native transport boundary, not gameplay state.
++
++## Ixian S2 / voice
++Sources inspected:
++- https://docs.ixian.io/docs/architecture/trustless-client-discovery
++- https://github.com/ixian-platform/Ixian-S2/blob/master/IxianS2/Meta/Node.cs (inspected revision 6b4dfe63aab34498cb9b293a5456ea84597bcacf)
++- https://github.com/ixian-platform/Ixian-Core/blob/master/Network/STUN.cs
++
++S2 starts an RFC5389 IPv4 UDP STUN server on port 3478. Enter an operator-confirmed reachable `stun:HOST:3478`. No default public endpoint is invented. STUN does not relay audio; some NATs require TURN, which this version does not configure. Native Spixi secure-context and microphone permissions must work for voice. Direct WebRTC exposes network addresses to the peer and STUN operator; voice is optional.
++
++## Executed checks
++- `tests/cooperative-win.cjs`: two browser contexts solve all three sectors using UI clues, shared victory, guest restart, five-failure game-over, retry, swaps, 390x844 layout and guest reload. PASS, zero JS errors. Transport simulated.
++- `tests/voice.cjs`: real browser WebRTC with synthetic audio and local RFC5389 service; two binding requests, signaling, audio tracks, mute and teardown. PASS. NOT a public S2 or native Spixi test.
++- `tests/sdk-contract.cjs`: actual official/bundled SDK load notification, ds recipient and xa encoding. PASS. NOT native integration.
++
++Set PLAYWRIGHT_MODULE to your Playwright installation path if not installed locally. Run tests against a static server serving `app/` at localhost:8770. The voice fixture binds a temporary UDP port for the test only.
++
++## Native release gate — BLOCKED / UNVERIFIED
++This environment has no Spixi runtime, adb, emulator, or connected phones. No installed-Spixi failure has been observed: no such test was possible. Do not treat simulated results as native acceptance.
++
++Required on TWO actual Spixi devices:
++1. Install the generated .zspixiapp or scan HTTPS .spixi metadata. Confirm 1.1.0 on both.
++2. Start a shared session with a contact; verify opposite roles and shared round.
++3. Complete frequency/wires, timed valve override and glyph decoding using separate screens. Verify BOTH victory screens.
++4. Retry, swap roles, disconnect/reconnect guest and verify convergence. End session and verify no active timers/microphone.
++5. Configure an operator-confirmed S2 STUN endpoint; enable microphone on both; verify audible bidirectional voice, mute, permission denial and teardown. Repeat across different networks, not only same Wi-Fi.
++6. Record OS, installed Spixi version, S2 hostname/version, observed behavior and logs excluding private addresses/credentials.
++
++## Packaging
++Official packer layout: `appinfo.spixi`, `icon.png`, `app/index.html`, `app/css/*`, `app/js/*`. Tests and this README are not in app/. External .spixi metadata includes absolute image/contentUrl plus archive SHA256 and size.
+diff --git a/apps/com.baracuda.spixi.protocol-eclipse/app/css/responsive.css b/apps/com.baracuda.spixi.protocol-eclipse/app/css/responsive.css
+new file mode 100644
+index 0000000..c389aff
+--- /dev/null
++++ b/apps/com.baracuda.spixi.protocol-eclipse/app/css/responsive.css
+@@ -0,0 +1,61 @@
++/* Eclipse 1.1 accessibility and responsive instrument layout. */
++:root { --text-muted: #a4b4c6; }
++html,body { height:100%; overflow:auto; }
++#game-app { width:100%; min-height:100dvh; height:auto; }
++.app-header { min-height:60px; height:auto; flex-wrap:wrap; gap:8px; padding:10px 16px; border-bottom:1px solid var(--border-dark); order:-2; }
++.header-left,.header-center,.header-right { flex-wrap:wrap; min-width:0; }
++.mission-feedback { padding:10px 16px; color:#bacfe5; background:#0c1725; font-size:.85rem; min-height:40px; order:-1; }
++.screen { min-height:calc(100dvh - 120px); overflow:visible; }
++.role-intro { display:none; }
++.role-intro.visible { display:block; position:fixed; left:5%; right:5%; bottom:14px; z-index:200; padding:12px 18px; border:1px solid #0088ff; background:#0a1b30; border-radius:12px; pointer-events:none; box-shadow:0 8px 30px #0009; }
++.voice-panel { padding:12px 16px; background:#0b1421; border-bottom:1px solid #1b2636; }
++.voice-panel summary { cursor:pointer; min-height:32px; color:#9ed6ff; }
++.voice-panel p { font-size:.8rem; color:#b6c7d8; margin:8px 0; }
++.voice-panel input { background:#040810; border:1px solid #426283; color:white; padding:12px; max-width:100%; border-radius:8px; }
++.voice-panel audio { display:block; width:100%; max-width:320px; margin-top:8px; }
++.eclipse-timer { font:700 .9rem monospace; color:#9ed6ff; }
++.eclipse-timer.critical { color:#ff8095; }
++button { min-height:44px; min-width:44px; touch-action:manipulation; }
++button:focus-visible,input:focus-visible { outline:3px solid #b1ddff; outline-offset:3px; }
++button:disabled { opacity:.5; cursor:not-allowed; }
++.btn-valve { touch-action:none; }
++.wire-yellow { background:#d4b232; color:#151204; }
++.wire-buttons { flex-wrap:wrap; }
++#op-canvas { flex:none; height:clamp(180px,32vh,340px); width:100%; }
++.hud-overlay { position:static; padding:12px; }
++.hud-top { display:flex; gap:8px; flex-wrap:wrap; }
++.op-controls-panel { height:auto; min-height:250px; border-top:1px solid var(--border-dark); }
++.puzzle-panel { height:auto; }
++.gauge-bar { position:relative; }
++.crt-header { flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border-dark); }
++.terminal-tabs { flex-wrap:wrap; }
++.crt-screen,.terminal-card,.grid-2col,.loop1-grid,.keypad-grid,.valves-grid { min-width:0; }
++.terminal-card,.target-box,.telemetry-item,.status-msg { overflow-wrap:anywhere; }
++.telemetry-item { gap:12px; border-bottom:1px solid #172435; }
++.log-stream { max-height:340px; width:100%; overflow:auto; overflow-wrap:anywhere; }
++#gameover-screen { align-items:center; justify-content:center; background:radial-gradient(#271221,#070a0f); }
++.gameover-card { background:#20101b; border-color:#ff617b; }
++.gameover-card h2 { color:#ff8c9f; }
++.victory-card { margin:24px auto; }
++.victory-stats { gap:15px; flex-wrap:wrap; }
++.shake .mission-feedback { animation:warning .3s ease; }
++@keyframes warning { 0%,100% {transform:translateX(0);} 30% {transform:translateX(-4px);background:#612337;} 60% {transform:translateX(4px);} }
++@media(max-width:700px) {
++ .app-header { padding:10px; }
++ .game-title { font-size:.9rem; }
++ .header-center { justify-content:space-between; width:100%; }
++ .header-right { width:100%; }
++ .header-right button { flex:1; }
++ .role-cards,.grid-2col,.loop1-grid,.keypad-grid,.valves-grid { grid-template-columns:minmax(0,1fr); gap:12px; }
++ .lobby-card { padding:20px; margin:20px auto; }
++ .lobby-card h2 {font-size:1.2rem;}
++ .role-card {padding:18px;}
++ #dispatcher-viewport {padding:8px;}
++ .crt-screen {padding:12px;}
++ .terminal-card {padding:14px;}
++ .terminal-tabs button {flex:1 1 40%; padding:8px;}
++ .op-controls-panel {padding:12px;}
++ .victory-card {padding:22px;}
++ .role-intro.visible {font-size:.8rem;}
++}
++@media(prefers-reduced-motion:reduce) { *,*::before,*::after {animation:none!important;transition:none!important;} }
+diff --git a/apps/com.baracuda.spixi.protocol-eclipse/app/index.html b/apps/com.baracuda.spixi.protocol-eclipse/app/index.html
+index fa186b4..2155132 100644
+--- a/apps/com.baracuda.spixi.protocol-eclipse/app/index.html
++++ b/apps/com.baracuda.spixi.protocol-eclipse/app/index.html
+@@ -5,9 +5,12 @@
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Protocol: Eclipse - Asymmetric Co-Op Escape</title>
+     <link rel="stylesheet" href="css/styles.css">
++    <link rel="stylesheet" href="css/responsive.css">
+ </head>
+ <body>
+     <div id="game-app" class="theme-dark">
++        <div id="role-intro" class="role-intro" role="status"></div>
++        <div id="mission-feedback" class="mission-feedback" role="status" aria-live="polite">Connect with a Spixi contact to start.</div>
+         <!-- Top Status Bar -->
+         <header class="app-header">
+             <div class="header-left">
+@@ -21,6 +24,7 @@
+                     <span class="status-dot"></span>
+                     <span id="status-text">P2P Connecting...</span>
+                 </div>
++                <div id="eclipse-timer" class="eclipse-timer">ECLIPSE: 03:00</div>
+             </div>
+ 
+             <div class="header-right">
+@@ -29,7 +33,18 @@
+             </div>
+         </header>
+ 
++        <details class="voice-panel">
++            <summary>Optional voice · Ixian S2 STUN</summary>
++            <p>Both players must enable voice. Direct WebRTC shares network addresses with your peer and STUN server. STUN is not a TURN relay.</p>
++            <label for="voice-stun">S2 STUN endpoint</label>
++            <input id="voice-stun" type="text" placeholder="stun:your-s2-host:3478" autocomplete="off" spellcheck="false">
++            <button id="voice-toggle" class="btn btn-primary">Enable voice</button>
++            <button id="voice-mute" class="btn btn-outline" disabled>Mute</button>
++            <p id="voice-status" role="status">Voice off · game continues over Spixi</p>
++            <audio id="voice-audio" autoplay controls></audio>
++        </details>
+         <!-- Role Choice / Lobby Screen -->
++
+         <div id="lobby-screen" class="screen active">
+             <div class="lobby-card">
+                 <h2>ASYMMETRIC ESCAPE INITIATION</h2>
+@@ -39,7 +54,7 @@
+                     <div class="role-card" data-role="operative">
+                         <div class="role-icon">🤿</div>
+                         <h3>OPERATIVE</h3>
+-                        <p class="role-desc">First-Person 3D Ground View. Physical wire sockets, manual pressure valves, and biometric cipher keypads.</p>
++                        <p class="role-desc">Animated instrument view. Operate wire sockets, pressure valves, and the cipher keypad while your partner guides you.</p>
+                         <button class="btn btn-primary select-role-btn" data-role="operative">Select Operative</button>
+                     </div>
+ 
+@@ -86,6 +101,7 @@
+                                 <button class="btn-wire wire-red" data-color="RED">RED</button>
+                                 <button class="btn-wire wire-green" data-color="GREEN">GREEN</button>
+                                 <button class="btn-wire wire-blue" data-color="BLUE">BLUE</button>
++                                <button class="btn-wire wire-yellow" data-color="YELLOW">YELLOW</button>
+                             </div>
+                             <div id="op-wire-status" class="status-msg">Sequence: Empty</div>
+                         </div>
+@@ -136,7 +152,7 @@
+             <div class="crt-screen">
+                 <div class="crt-header">
+                     <span>COMMAND TERMINAL v4.09</span>
+-                    <span>DIAGNOSTIC STATUS: ONLINE</span>
++                    <span id="disp-objective" class="disp-objective"></span>
+                     <span id="disp-timer">TIME: 00:00</span>
+                 </div>
+ 
+@@ -213,24 +229,17 @@
+                     <div class="grid-2col">
+                         <div class="terminal-card">
+                             <h3>BIOMETRIC CIPHER MATRIX</h3>
+-                            <p class="term-desc">Ask Operative for displayed glyphs, then enter them below to generate 4-digit code.</p>
+-                            <div class="cipher-table">
+-                                <div>Glyph 1: Alpha ➔ <strong>8</strong></div>
+-                                <div>Glyph 2: Delta ➔ <strong>4</strong></div>
+-                                <div>Glyph 3: Sigma ➔ <strong>1</strong></div>
+-                                <div>Glyph 4: Seven ➔ <strong>9</strong></div>
+-                            </div>
++                            <p class="term-desc">Ask your Operative for the four glyphs in order. Use this dictionary to tell them the four digits, then send authorization.</p>
++                            <div id="cipher-dictionary" class="cipher-table"></div>
+                             <div class="cipher-calc">
+-                                <label>Calculated Auth Code:</label>
+-                                <div id="disp-calc-code" class="digital-readout">8419</div>
+-                                <button id="disp-send-auth" class="btn btn-success mt-2">Authorize Authorization Token</button>
++                                <button id="disp-send-auth" class="btn btn-success mt-2">Send Authorization Token</button>
+                             </div>
+                         </div>
+ 
+                         <div class="terminal-card">
+                             <h3>VAULT DOOR LOCK STATUS</h3>
+                             <div class="telemetry-item">
+-                                <span>Glyphs Reported:</span> <span id="disp-op-glyphs" class="readout">Alpha • Delta • Sigma • 7</span>
++                                <span>Glyph Order:</span> <span class="readout">Ask your Operative</span>
+                             </div>
+                             <div class="telemetry-item">
+                                 <span>Auth Token Sent:</span> <span id="disp-token-sent" class="readout">NO</span>
+@@ -263,16 +272,30 @@
+                 <p>All 3 security barriers bypassed through flawless coordination.</p>
+                 <div id="victory-stats" class="victory-stats">
+                     <div>Completion Time: <strong id="vic-time">02:45</strong></div>
+-                    <div>P2P Sync Messages: <strong id="vic-msgs">34</strong></div>
++                    <div>Failed Overrides: <strong id="vic-msgs">0</strong></div>
+                 </div>
+                 <button id="btn-play-again" class="btn btn-primary btn-lg mt-4">Play Again</button>
+             </div>
+         </div>
+ 
++        <!-- Game Over Modal -->
++        <div id="gameover-screen" class="screen">
++            <div class="victory-card gameover-card">
++                <div class="trophy-icon">🌑</div>
++                <h2>LOCKDOWN — THE ECLIPSE WINS</h2>
++                <p id="gameover-reason">The facility is lost.</p>
++                <div class="victory-stats">
++                    <div>Failed Overrides: <strong id="gameover-attempts">0</strong></div>
++                </div>
++                <button id="btn-retry-game" class="btn btn-primary btn-lg mt-4">Try Again</button>
++            </div>
++        </div>
++
+     </div>
+ 
+     <script src="js/spixi-app-sdk.js"></script>
+     <script src="js/spixi-tools.js"></script>
++    <script src="js/voice.js"></script>
+     <script src="js/game.js"></script>
+ </body>
+ </html>
+diff --git a/apps/com.baracuda.spixi.protocol-eclipse/app/js/game.js b/apps/com.baracuda.spixi.protocol-eclipse/app/js/game.js
+index 44f3d3e..64ece28 100644
+--- a/apps/com.baracuda.spixi.protocol-eclipse/app/js/game.js
++++ b/apps/com.baracuda.spixi.protocol-eclipse/app/js/game.js
+@@ -1,611 +1,347 @@
+-/**
+- * Protocol: Eclipse - Asymmetric Co-Op Game Core
+- * Powered by Spixi Mini Apps SDK & Web Audio API
+- */
+-
+-(function () {
+-    'use strict';
+-
+-    // Game Global State
+-    const state = {
+-        role: 'operative', // 'operative' | 'dispatcher'
+-        sessionId: 'sess_default',
+-        myAddress: 'user_local',
+-        peerAddress: null,
+-        p2pConnected: false,
+-        currentLoop: 1, // 1, 2, 3, or 4 (Victory)
+-        startTime: Date.now(),
+-        messageCount: 0,
+-        
+-        // Loop 1 State (Frequency & Wires)
+-        loop1: {
+-            targetFreq: 432,
+-            targetWireOrder: ['GREEN', 'RED', 'BLUE'],
+-            opFreq: 250,
+-            opWireSeq: [],
+-            completed: false
+-        },
+-
+-        // Loop 2 State (Pressure Venting)
+-        loop2: {
+-            targetValve: 'B',
+-            targetMinPsi: 70,
+-            targetMaxPsi: 80,
+-            currentPsi: 0,
+-            opHeldValve: null, // 'A', 'B', 'C', or null
+-            completed: false
+-        },
+-
+-        // Loop 3 State (Biometric Cipher Keypad)
+-        loop3: {
+-            glyphs: ['Alpha', 'Delta', 'Sigma', '7'],
+-            targetCode: '8419',
+-            opInputCode: '',
+-            tokenAuthorized: false,
+-            completed: false
+-        }
++/** Protocol: Eclipse 1.1.0 — dependency-free, host-authoritative co-op. */
++(() => {
++  'use strict';
++  const sdk = window.SpixiAppSdk;
++  const $ = id => document.getElementById(id);
++  const LIMITS = [0, 180, 150, 120];
++  const COLORS = ['RED', 'GREEN', 'BLUE', 'YELLOW'];
++  const GLYPHS = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Sigma', 'Omega', 'Zeta', 'Seven', 'Three'];
++  const clone = value => JSON.parse(JSON.stringify(value));
++  let session = '', me = '', peer = '', host = false, connected = false, model = null;
++  let boot = '', peerBoot = '', outSeq = 0, receivedSeq = 0, revision = 0, receivedRevision = -1;
++  let epoch = 0, lastPeer = 0, lastTick = 0, lastPublish = 0, lastHello = 0;
++  let interval = 0, raf = 0, audio = null, ready = false, displayedStage = '', lastStatus = '';
++  let freqPending = 0, localValve = null, introTimer = 0;
++  const token = () => Array.from(crypto.getRandomValues(new Uint32Array(2))).join('-');
++  const role = () => model && model.operative === me ? 'operative' : 'dispatcher';
++  const active = () => model && model.status === 'playing';
++
++  function rng(seed) {
++    return () => {
++      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
++      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
++      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
++      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+     };
+-
+-    // Web Audio Synthesizer
+-    let audioCtx = null;
+-
+-    function initAudio() {
+-        if (!audioCtx) {
+-            const AudioContext = window.AudioContext || window.webkitAudioContext;
+-            if (AudioContext) audioCtx = new AudioContext();
+-        }
+-    }
+-
+-    function playBeep(freq = 440, type = 'sine', duration = 0.1) {
+-        if (!audioCtx) return;
+-        try {
+-            const osc = audioCtx.createOscillator();
+-            const gain = audioCtx.createGain();
+-            osc.type = type;
+-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+-            osc.connect(gain);
+-            gain.connect(audioCtx.destination);
+-            osc.start();
+-            osc.stop(audioCtx.currentTime + duration);
+-        } catch (e) {}
++  }
++  function shuffle(list, random) {
++    const result = [...list];
++    for (let i = result.length - 1; i > 0; i--) {
++      const j = Math.floor(random() * (i + 1));
++      [result[i], result[j]] = [result[j], result[i]];
+     }
+-
+-    function playValveHiss() {
+-        if (!audioCtx) return;
+-        try {
+-            const bufferSize = audioCtx.sampleRate * 0.4;
+-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+-            const output = buffer.getChannelData(0);
+-            for (let i = 0; i < bufferSize; i++) {
+-                output[i] = Math.random() * 2 - 1;
+-            }
+-            const whiteNoise = audioCtx.createBufferSource();
+-            whiteNoise.buffer = buffer;
+-            const filter = audioCtx.createBiquadFilter();
+-            filter.type = 'bandpass';
+-            filter.frequency.value = 1000;
+-            whiteNoise.connect(filter);
+-            filter.connect(audioCtx.destination);
+-            whiteNoise.start();
+-        } catch (e) {}
+-    }
+-
+-    // =========================================================================
+-    // SPIXI P2P NETWORK INTEGRATION
+-    // =========================================================================
+-
+-    function sendP2P(type, payload = {}) {
+-        state.messageCount++;
+-        const msgObj = { type, payload, sender: state.myAddress, timestamp: Date.now() };
+-        logDispatcherEvent(`[OUT] ${type}: ${JSON.stringify(payload)}`);
+-        
+-        if (window.SpixiAppSdk && typeof window.SpixiAppSdk.sendNetworkData === 'function') {
+-            window.SpixiAppSdk.sendNetworkData(JSON.stringify(msgObj));
+-        }
+-    }
+-
+-    window.SpixiAppSdk.onInit = function (sessionId, userAddress, ...remoteAddresses) {
+-        state.sessionId = sessionId;
+-        state.myAddress = userAddress;
+-        state.peerAddress = remoteAddresses[0] || null;
+-        state.p2pConnected = true;
+-
+-        updateP2PStatus(true, `Connected to ${state.peerAddress ? state.peerAddress.substring(0, 8) + '...' : 'Peer'}`);
+-
+-        // Auto-assign role based on lexicographical order
+-        if (state.peerAddress && userAddress > state.peerAddress) {
+-            setRole('dispatcher');
+-        } else {
+-            setRole('operative');
+-        }
+-
+-        // Fire OnLoad
+-        window.SpixiAppSdk.fireOnLoad();
++    return result;
++  }
++  function newRound(operative) {
++    epoch++;
++    const seed = crypto.getRandomValues(new Uint32Array(1))[0], random = rng(seed);
++    const digits = shuffle([0,1,2,3,4,5,6,7,8,9], random);
++    const mapping = GLYPHS.map((glyph, i) => ({glyph, digit: digits[i]}));
++    const glyphs = shuffle(GLYPHS, random).slice(0,4);
++    model = {
++      epoch, seed, operative, status: 'playing', stage: 1, elapsed: 0, remaining: LIMITS[1],
++      failures: 0, totalFailures: 0, reason: '', notice: 'Round ready. Work together.', paused: !connected,
++      freq: 250, wires: [], psi: 0, valve: null, code: '', authorized: false,
++      puzzle: {
++        frequency: 300 + Math.floor(random() * 301), wires: shuffle(COLORS,random),
++        valve: ['A','B','C'][Math.floor(random() * 3)], pressure: 60 + Math.floor(random() * 15),
++        glyphs, mapping, code: glyphs.map(g => mapping.find(m => m.glyph === g).digit).join('')
++      }
+     };
+-
+-    window.SpixiAppSdk.onNetworkData = function (senderAddress, dataStr) {
+-        state.p2pConnected = true;
+-        updateP2PStatus(true, 'P2P Active');
+-        
+-        try {
+-            const msg = JSON.parse(dataStr);
+-            logDispatcherEvent(`[IN] ${msg.type}: ${JSON.stringify(msg.payload || {})}`);
+-            handleIncomingP2P(msg);
+-        } catch (e) {
+-            console.error('Failed to parse P2P message:', e);
+-        }
+-    };
+-
+-    function handleIncomingP2P(msg) {
+-        const p = msg.payload || {};
+-        switch (msg.type) {
+-            case 'ROLE_SWAP':
+-                setRole(p.newRole);
+-                break;
+-            case 'OP_STATE_UPDATE':
+-                if (p.opFreq !== undefined) state.loop1.opFreq = p.opFreq;
+-                if (p.opWireSeq) state.loop1.opWireSeq = p.opWireSeq;
+-                if (p.currentPsi !== undefined) state.loop2.currentPsi = p.currentPsi;
+-                if (p.opHeldValve !== undefined) state.loop2.opHeldValve = p.opHeldValve;
+-                if (p.opInputCode !== undefined) state.loop3.opInputCode = p.opInputCode;
+-                updateDispatcherUI();
+-                break;
+-            case 'ACTION_PULSE':
+-                playBeep(600, 'sine', 0.2);
+-                checkLoop1Completion();
+-                break;
+-            case 'ACTION_VENT':
+-                playValveHiss();
+-                checkLoop2Completion();
+-                break;
+-            case 'ACTION_AUTH':
+-                state.loop3.tokenAuthorized = true;
+-                playBeep(880, 'square', 0.2);
+-                updateDispatcherUI();
+-                break;
+-            case 'RESTART_GAME':
+-                resetGame(false);
+-                break;
+-        }
+-    }
+-
+-    // =========================================================================
+-    // ROLE & UI MANAGEMENT
+-    // =========================================================================
+-
+-    function setRole(newRole) {
+-        state.role = newRole;
+-        const badge = document.getElementById('role-badge');
+-        badge.textContent = newRole.toUpperCase();
+-        badge.className = `badge badge-${newRole}`;
+-
+-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+-        if (newRole === 'operative') {
+-            document.getElementById('operative-viewport').classList.add('active');
+-        } else {
+-            document.getElementById('dispatcher-viewport').classList.add('active');
+-        }
++    clearTimeout(freqPending); freqPending = 0;
++    localValve = null;
++    publish();
++  }
++  function log(text) {
++    const stream = $('disp-log-stream');
++    if (!stream) return;
++    const line = document.createElement('div');
++    line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
++    stream.append(line);
++    while (stream.children.length > 60) stream.firstChild.remove();
++    stream.scrollTop = stream.scrollHeight;
++  }
++  function send(type, payload = {}) {
++    if (!session || !peer) return;
++    const message = {v:1, session, boot, epoch:model?.epoch || 0, seq:++outSeq, type, payload};
++    try { sdk.sendNetworkData(JSON.stringify(message),peer); }
++    catch (_) { connected = false; log('Transport unavailable. Waiting to reconnect.'); }
++  }
++  function publish() {
++    if (!host || !model) return;
++    revision++;
++    lastPublish = performance.now();
++    send('snapshot', {revision, state:model, forBoot:peerBoot});
++    render();
++  }
++  function fail(reason) {
++    model.failures++; model.totalFailures++; model.notice = reason;
++    if (model.failures >= 5) { model.status = 'lost'; model.reason = 'Five failed overrides in this sector. Lockdown engaged.'; }
++    log(reason);
++  }
++  function advance() {
++    model.stage++; model.remaining = LIMITS[model.stage]; model.failures = 0;
++    model.valve = null; model.notice = 'Sector cleared. Next security barrier online.';
++  }
++  // All gameplay intents — including the host's own inputs — use this reducer.
++  function reduce(sender, action, value) {
++    if (!host || !model || (sender !== me && sender !== peer)) return;
++    const operative = sender === model.operative;
++    if (action === 'restart') { newRound(model.operative); return; }
++    if (!active() || model.paused) return;
++    if (action === 'role' && ['operative','dispatcher'].includes(value)) {
++      model.operative = value === 'operative' ? sender : sender === me ? peer : me;
++      model.valve = null;
++    } else if (action === 'frequency' && operative && model.stage === 1 && Number.isInteger(value) && value >= 100 && value <= 999) {
++      model.freq = value;
++    } else if (action === 'wire' && operative && model.stage === 1 && COLORS.includes(value)) {
++      if (model.wires.length === model.puzzle.wires.length) model.wires = [];
++      model.wires.push(value);
++    } else if (action === 'pulse' && !operative && model.stage === 1) {
++      if (Math.abs(model.freq-model.puzzle.frequency) <= 10 && model.wires.join() === model.puzzle.wires.join()) advance();
++      else fail('Calibration rejected. Confirm the frequency and the wire order.');
++    } else if (action === 'valve' && operative && model.stage === 2 && (value === null || ['A','B','C'].includes(value))) {
++      model.valve = value;
++    } else if (action === 'vent' && !operative && model.stage === 2) {
++      if (model.valve === model.puzzle.valve && model.psi >= model.puzzle.pressure && model.psi <= model.puzzle.pressure+8) advance();
++      else fail('Vent rejected. Coordinate the valve and pressure window.');
++    } else if (action === 'authorize' && !operative && model.stage === 3) {
++      model.authorized = true; model.notice = 'Authorization token received. Enter the decoded glyphs.';
++    } else if (action === 'key' && operative && model.stage === 3 && typeof value === 'string') {
++      if (value === 'CLR') model.code = '';
++      else if (value === 'ENT') {
++        if (model.code === model.puzzle.code && model.authorized) {
++          model.status = 'won'; model.notice = 'Facility escaped. Both agents extracted.';
++        } else fail('Access denied. Check the glyph decoding and authorization token.');
++      } else if (/^\d$/.test(value) && model.code.length < 4) model.code += value;
++      else return;
++    } else return;
++    publish();
++  }
++  function intent(action,value) {
++    unlockAudio();
++    if (!model || !connected) return;
++    if (host) reduce(me,action,value);
++    else send('intent',{action,value});
++  }
++  function validState(s) {
++    return s && Number.isSafeInteger(s.epoch) && s.epoch > 0 && [me,peer].includes(s.operative)
++      && ['playing','won','lost'].includes(s.status) && [1,2,3].includes(s.stage)
++      && Number.isFinite(s.remaining) && Number.isFinite(s.psi) && s.psi >= 0 && s.psi <= 110
++      && Array.isArray(s.wires) && s.wires.length <= 4 && s.wires.every(c=>COLORS.includes(c))
++      && typeof s.code === 'string' && s.code.length <= 4 && s.puzzle
++      && Array.isArray(s.puzzle.mapping) && s.puzzle.mapping.length === 10
++      && Array.isArray(s.puzzle.glyphs) && s.puzzle.glyphs.length === 4;
++  }
++  sdk.onNetworkData = (sender,data) => {
++    if (!ready || sender !== peer || typeof data !== 'string' || data.length > 16000) return;
++    let m; try { m = JSON.parse(data); } catch (_) { return; }
++    if (!m || m.v !== 1 || m.session !== session || typeof m.boot !== 'string'
++      || !Number.isSafeInteger(m.seq) || m.seq <= 0 || !m.payload || typeof m.payload !== 'object') return;
++    if (m.type === 'hello') {
++      // A fresh page boot must introduce itself before any new intents are accepted.
++      if (peerBoot !== m.boot) { peerBoot = m.boot; receivedSeq = 0; receivedRevision = -1; }
++    } else if (m.boot !== peerBoot) { send('hello'); return; }
++    if (m.seq <= receivedSeq) return;
++    receivedSeq = m.seq; lastPeer = performance.now(); connected = true;
++    if (m.type === 'voice') { window.EclipseVoice?.receive(m.payload); return; }
++    if (m.type === 'hello') {
++      if (host) { model.paused = false; publish(); }
++      else send('request');
++    } else if (m.type === 'request' && host) publish();
++    else if (m.type === 'intent' && host && m.epoch === model?.epoch) {
++      reduce(sender,m.payload.action,m.payload.value);
++    } else if (m.type === 'snapshot' && !host && m.payload.forBoot === boot
++      && Number.isSafeInteger(m.payload.revision) && m.payload.revision > receivedRevision && validState(m.payload.state)) {
++      receivedRevision = m.payload.revision;
++      model = clone(m.payload.state); epoch = model.epoch;
++      render();
+     }
+-
+-    function updateP2PStatus(connected, text) {
+-        const dot = document.querySelector('.status-dot');
+-        const textEl = document.getElementById('status-text');
+-        if (dot) dot.className = `status-dot ${connected ? 'connected' : ''}`;
+-        if (textEl) textEl.textContent = text;
+-    }
+-
+-    function logDispatcherEvent(msg) {
+-        const stream = document.getElementById('disp-log-stream');
+-        if (!stream) return;
+-        const time = new Date().toLocaleTimeString();
+-        const div = document.createElement('div');
+-        div.textContent = `[${time}] ${msg}`;
+-        stream.appendChild(div);
+-        stream.scrollTop = stream.scrollHeight;
++  };
++  sdk.onInit = (id,address,...others) => {
++    if (!ready) { pendingInit = [id,address,...others]; return; }
++    const remote = others.flat().filter(a=>typeof a === 'string' && a !== address)[0];
++    if (typeof id !== 'string' || typeof address !== 'string' || !remote) {
++      $('status-text').textContent = 'Waiting for a second Spixi participant'; return;
+     }
+-
+-    // =========================================================================
+-    // PUZZLE LOGIC & SIMULATION LOOPS
+-    // =========================================================================
+-
+-    function checkLoop1Completion() {
+-        if (state.currentLoop !== 1) return;
+-        const freqMatch = Math.abs(state.loop1.opFreq - state.loop1.targetFreq) <= 10;
+-        const wiresMatch = JSON.stringify(state.loop1.opWireSeq) === JSON.stringify(state.loop1.targetWireOrder);
+-
+-        if (freqMatch && wiresMatch) {
+-            state.loop1.completed = true;
+-            state.currentLoop = 2;
+-            playBeep(800, 'triangle', 0.4);
+-            logDispatcherEvent('⚡ LOOP 1 CLEARED! Moving to Loop 2...');
+-            updatePanelsForCurrentLoop();
+-        } else {
+-            playBeep(200, 'sawtooth', 0.3);
+-            logDispatcherEvent(`❌ Loop 1 Pulse Failed: Freq (${state.loop1.opFreq}/${state.loop1.targetFreq}), Wires Match: ${wiresMatch}`);
++    if (session === id && me === address && peer === remote) { send('hello'); return; }
++    shutdown();
++    session=id; me=address; peer=remote; host=me<peer; boot=token(); peerBoot='';
++    outSeq=receivedSeq=revision=epoch=0; receivedRevision=-1; connected=false;
++    lastPeer=0; model=null; lastTick=performance.now(); lastHello=lastTick;
++    window.EclipseVoice?.init(payload => send('voice',payload),host);
++    if (host) newRound(me);
++    send('hello');
++    interval=setInterval(tick,50);
++    showIntro(); render();
++  };
++  let pendingInit = null;
++  function tick() {
++    const now=performance.now(), dt=Math.min((now-lastTick)/1000,0.25); lastTick=now;
++    if (now-lastHello >= 1000) { lastHello=now; send('hello'); }
++    if (lastPeer && now-lastPeer > 5000) connected=false;
++    if (host && model) {
++      model.paused = !connected;
++      if (active() && connected) {
++        model.elapsed+=dt; model.remaining=Math.max(0,model.remaining-dt);
++        if (model.stage === 2) {
++          // Pressure cycles instead of creating an unwinnable overshoot. Holding a valve slows it.
++          model.psi=Math.max(0,Math.min(110,model.psi+dt*(model.valve ? -3 : 6)));
++          if (model.psi >= 105) { model.psi=0; model.valve=null; fail('Pressure surge. Chamber vented; try the next cycle.'); }
+         }
++        if (model.remaining <= 0) { model.status='lost'; model.reason='The Eclipse completed before the sector was cleared.'; }
++      }
++      if (now-lastPublish >= 250) publish();
+     }
+-
+-    function checkLoop2Completion() {
+-        if (state.currentLoop !== 2) return;
+-        const valveMatch = state.loop2.opHeldValve === state.loop2.targetValve;
+-        const psiMatch = state.loop2.currentPsi >= state.loop2.targetMinPsi && state.loop2.currentPsi <= state.loop2.targetMaxPsi;
+-
+-        if (valveMatch && psiMatch) {
+-            state.loop2.completed = true;
+-            state.currentLoop = 3;
+-            playBeep(900, 'triangle', 0.4);
+-            logDispatcherEvent('💨 LOOP 2 CLEARED! Airlock Vented!');
+-            updatePanelsForCurrentLoop();
+-        } else {
+-            playBeep(180, 'sawtooth', 0.3);
+-            logDispatcherEvent(`❌ Loop 2 Vent Failed: Held Valve (${state.loop2.opHeldValve}), PSI (${state.loop2.currentPsi})`);
+-        }
++    $('status-text').textContent=connected ? 'P2P linked · shared state' : 'Waiting for peer · round paused';
++    document.querySelector('.status-dot').classList.toggle('connected',connected);
++  }
++  function shutdown() {
++    window.EclipseVoice?.close();
++    clearInterval(interval); interval=0; clearTimeout(freqPending); freqPending=0;
++    clearTimeout(introTimer); cancelAnimationFrame(raf); raf=0;
++    localValve=null;
++  }
++  sdk.onAppEndSession = () => {
++    shutdown(); session=''; connected=false; model=null; render();
++    $('status-text').textContent='Session ended. Return to Spixi to start again.';
++  };
++  function clock(seconds) { const s=Math.max(0,Math.ceil(seconds)); return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
++  function text(id,value) { const el=$(id); if(el) el.textContent=value; }
++  function showIntro() {
++    text('role-intro', role()==='operative' ? 'OPERATIVE: describe your glyphs, operate the panels, and follow your partner’s instructions.' : 'DISPATCHER: read the targets, decode your partner’s glyphs, and time the overrides.');
++    $('role-intro').classList.add('visible'); clearTimeout(introTimer);
++    introTimer=setTimeout(()=>$('role-intro').classList.remove('visible'),6000);
++  }
++  function setTab(id) {
++    document.querySelectorAll('.term-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
++    document.querySelectorAll('.tab-content').forEach(t=>t.classList.toggle('active',t.id===id));
++  }
++  let lastFailures=0, lastStage=1, oldRole='';
++  function render() {
++    const r=role(), status=model?.status || 'lobby';
++    const screen=status==='lobby' ? 'lobby-screen' : status==='won' ? 'victory-screen' : status==='lost' ? 'gameover-screen' : r==='operative' ? 'operative-viewport' : 'dispatcher-viewport';
++    document.querySelectorAll('.screen').forEach(el=>el.classList.toggle('active',el.id===screen));
++    if (!model) { cancelAnimationFrame(raf); raf=0; return; }
++    if(oldRole!==r) { oldRole=r; localValve=null; showIntro(); }
++    text('role-badge',r.toUpperCase()); $('role-badge').className=`badge badge-${r}`;
++    const stageKey=`${model.epoch}:${model.stage}:${r}`;
++    if(displayedStage!==stageKey) {
++      displayedStage=stageKey;
++      setTab(['','tab-freq','tab-pressure','tab-cipher'][model.stage]);
+     }
+-
+-    function checkLoop3Completion() {
+-        if (state.currentLoop !== 3) return;
+-        if (state.loop3.opInputCode === state.loop3.targetCode && state.loop3.tokenAuthorized) {
+-            state.loop3.completed = true;
+-            state.currentLoop = 4;
+-            triggerVictory();
+-        } else {
+-            playBeep(150, 'sawtooth', 0.3);
+-            logDispatcherEvent('❌ Keypad Access Denied!');
+-        }
++    document.querySelectorAll('.puzzle-panel').forEach(el=>el.classList.toggle('active',el.id===`op-loop${model.stage}-panel`));
++    const objectives=['','Match the frequency and wire order supplied by your dispatcher.','Hold the instructed valve in the pressure window. Ask your dispatcher to vent.','Describe your glyphs. Enter the decoded digits after authorization.'];
++    text('op-task-indicator',objectives[model.stage]);
++    text('disp-objective',`SECTOR ${model.stage} · ${model.failures}/5 failed overrides`);
++    text('mission-feedback',model.notice);
++    text('eclipse-timer',`${model.paused ? 'PAUSED' : 'ECLIPSE'}: ${clock(model.remaining)}`);
++    $('eclipse-timer').classList.toggle('critical',model.remaining<=30);
++    text('disp-timer',`TIME: ${clock(model.elapsed)}`);
++    text('disp-target-freq',`${model.puzzle.frequency} Hz (±10)`);
++    text('disp-wire-order',model.puzzle.wires.join(' ➔ '));
++    text('disp-target-valve',`VALVE ${model.puzzle.valve}`);
++    text('disp-target-psi',`${model.puzzle.pressure}–${model.puzzle.pressure+8} PSI`);
++    text('op-freq-val',`${model.freq} Hz`);
++    if(!freqPending) $('op-freq-slider').value=model.freq;
++    text('op-wire-status',`Sequence: ${model.wires.join(' ➔ ') || 'Empty'}`);
++    text('disp-op-freq',`${model.freq} Hz`); text('disp-op-wire',model.wires.join(' ➔ ') || 'PENDING');
++    text('gauge-val',`${Math.floor(model.psi)} PSI`); text('disp-op-psi',`${Math.floor(model.psi)} PSI`);
++    $('gauge-fill').style.width=`${Math.min(100,model.psi)}%`;
++    text('disp-op-valve',model.valve ? `VALVE ${model.valve}` : 'NONE');
++    document.querySelectorAll('.btn-valve').forEach(b=>b.classList.toggle('active',b.id.endsWith((model.valve || '-').toLowerCase())));
++    $('op-keypad-code').value=model.code;
++    text('op-glyphs',model.puzzle.glyphs.join(' • '));
++    // Dispatcher sees the dictionary, never the operative's glyph order or decoded answer.
++    const table=$('cipher-dictionary');
++    if(table && table.dataset.seed!==String(model.seed)) {
++      table.replaceChildren();
++      for(const entry of model.puzzle.mapping) { const row=document.createElement('div'); row.textContent=`${entry.glyph} → ${entry.digit}`; table.append(row); }
++      table.dataset.seed=String(model.seed);
+     }
+-
+-    function updatePanelsForCurrentLoop() {
+-        // Operative panels
+-        document.querySelectorAll('.puzzle-panel').forEach(p => p.classList.remove('active'));
+-        const opPanel = document.getElementById(`op-loop${Math.min(state.currentLoop, 3)}-panel`);
+-        if (opPanel) opPanel.classList.add('active');
+-
+-        // Objectives
+-        const taskObj = {
+-            1: 'CURRENT OBJECTIVE: ALIGN FREQUENCY & PATCH WIRES',
+-            2: 'CURRENT OBJECTIVE: HOLD VENT VALVE B AT 75 PSI',
+-            3: 'CURRENT OBJECTIVE: ENTER BIOMETRIC CIPHER CODE',
+-            4: 'OBJECTIVE COMPLETE: FACILITY ESCAPED!'
+-        };
+-        const ind = document.getElementById('op-task-indicator');
+-        if (ind) ind.textContent = taskObj[state.currentLoop] || '';
+-
+-        // Dispatcher Tabs
+-        if (state.role === 'dispatcher') {
+-            document.querySelectorAll('.term-tab').forEach(t => t.classList.remove('active'));
+-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+-            
+-            const targetTabId = state.currentLoop === 1 ? 'tab-freq' : (state.currentLoop === 2 ? 'tab-pressure' : 'tab-cipher');
+-            const tabBtn = document.querySelector(`.term-tab[data-tab="${targetTabId}"]`);
+-            const tabContent = document.getElementById(targetTabId);
+-            if (tabBtn) tabBtn.classList.add('active');
+-            if (tabContent) tabContent.classList.add('active');
+-        }
+-    }
+-
+-    function triggerVictory() {
+-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+-        document.getElementById('victory-screen').classList.add('active');
+-
+-        const totalSecs = Math.floor((Date.now() - state.startTime) / 1000);
+-        const mins = String(Math.floor(totalSecs / 60)).padStart(2, '0');
+-        const secs = String(totalSecs % 60).padStart(2, '0');
+-        
+-        document.getElementById('vic-time').textContent = `${mins}:${secs}`;
+-        document.getElementById('vic-msgs').textContent = state.messageCount;
+-
+-        playBeep(523, 'sine', 0.2);
+-        setTimeout(() => playBeep(659, 'sine', 0.2), 200);
+-        setTimeout(() => playBeep(783, 'sine', 0.4), 400);
+-    }
+-
+-    function resetGame(notifyPeer = true) {
+-        state.currentLoop = 1;
+-        state.startTime = Date.now();
+-        state.loop1.opFreq = 250;
+-        state.loop1.opWireSeq = [];
+-        state.loop1.completed = false;
+-        state.loop2.currentPsi = 0;
+-        state.loop2.opHeldValve = null;
+-        state.loop2.completed = false;
+-        state.loop3.opInputCode = '';
+-        state.loop3.tokenAuthorized = false;
+-        state.loop3.completed = false;
+-
+-        document.getElementById('op-freq-slider').value = 250;
+-        document.getElementById('op-freq-val').textContent = '250 Hz';
+-        document.getElementById('op-wire-status').textContent = 'Sequence: Empty';
+-        document.getElementById('op-keypad-code').value = '';
+-
+-        if (notifyPeer) sendP2P('RESTART_GAME');
+-        setRole(state.role);
+-        updatePanelsForCurrentLoop();
++    text('disp-token-sent',model.authorized?'YES':'NO');
++    for(let i=1;i<=3;i++) {
++      const cleared=model.stage>i || status==='won';
++      const el=$(`disp-loop${i}-lock`); el.textContent=cleared?'CLEARED':'LOCKED'; el.className=`badge ${cleared?'badge-success':'badge-warn'}`;
+     }
+-
+-    // =========================================================================
+-    // 3D CANVAS RENDERING SYSTEM (OPERATIVE FIRST PERSON)
+-    // =========================================================================
+-
+-    let canvas, ctx;
+-
+-    function init3DCanvas() {
+-        canvas = document.getElementById('op-canvas');
+-        if (!canvas) return;
+-        ctx = canvas.getContext('2d');
+-
+-        function resize() {
+-            canvas.width = canvas.clientWidth;
+-            canvas.height = canvas.clientHeight;
+-        }
+-        window.addEventListener('resize', resize);
+-        resize();
+-
+-        requestAnimationFrame(renderLoop);
+-    }
+-
+-    let time = 0;
+-    function renderLoop() {
+-        time += 0.03;
+-        if (ctx && canvas) {
+-            const w = canvas.width;
+-            const h = canvas.height;
+-
+-            // Background Sci-Fi Corridor 3D Perspective Grid
+-            ctx.fillStyle = '#03060a';
+-            ctx.fillRect(0, 0, w, h);
+-
+-            // Draw Perspective Vanishing Point Lines
+-            const cx = w / 2;
+-            const cy = h / 2 - 30;
+-
+-            ctx.strokeStyle = '#0e1d33';
+-            ctx.lineWidth = 1.5;
+-
+-            // Corridor walls
+-            ctx.beginPath();
+-            ctx.moveTo(0, 0); ctx.lineTo(cx, cy);
+-            ctx.moveTo(w, 0); ctx.lineTo(cx, cy);
+-            ctx.moveTo(0, h); ctx.lineTo(cx, cy);
+-            ctx.moveTo(w, h); ctx.lineTo(cx, cy);
+-            ctx.stroke();
+-
+-            // Animated Corridor floor grid
+-            ctx.strokeStyle = 'rgba(0, 136, 255, 0.15)';
+-            for (let i = 1; i <= 6; i++) {
+-                const z = (i + (time % 1)) / 6;
+-                const gy = cy + (h - cy) * z;
+-                ctx.beginPath();
+-                ctx.moveTo(cx * (1 - z), gy);
+-                ctx.lineTo(w - (w - cx) * (1 - z), gy);
+-                ctx.stroke();
+-            }
+-
+-            // Draw Active Loop 3D Apparatus Frame
+-            if (state.currentLoop === 1) {
+-                drawLoop1Oscilloscope(cx, cy, w, h);
+-            } else if (state.currentLoop === 2) {
+-                drawLoop2AirlockGauge(cx, cy, w, h);
+-            } else if (state.currentLoop === 3) {
+-                drawLoop3VaultDoor(cx, cy, w, h);
+-            }
+-        }
+-        requestAnimationFrame(renderLoop);
+-    }
+-
+-    function drawLoop1Oscilloscope(cx, cy, w, h) {
+-        // Render 3D Oscilloscope Frame
+-        const boxW = 320;
+-        const boxH = 180;
+-        const bx = cx - boxW / 2;
+-        const by = cy - boxH / 2 + 20;
+-
+-        ctx.fillStyle = '#081220';
+-        ctx.strokeStyle = '#0088ff';
+-        ctx.lineWidth = 2;
+-        ctx.fillRect(bx, by, boxW, boxH);
+-        ctx.strokeRect(bx, by, boxW, boxH);
+-
+-        // Oscilloscope Screen Waveform
+-        ctx.fillStyle = '#020912';
+-        ctx.fillRect(bx + 15, by + 15, boxW - 30, boxH - 30);
+-
+-        ctx.strokeStyle = '#00e676';
+-        ctx.lineWidth = 2;
+-        ctx.beginPath();
+-
+-        const freqFactor = state.loop1.opFreq / 50;
+-        for (let x = 0; x < boxW - 30; x++) {
+-            const y = (by + boxH / 2) + Math.sin(x * 0.05 * freqFactor + time * 5) * 35;
+-            if (x === 0) ctx.moveTo(bx + 15 + x, y);
+-            else ctx.lineTo(bx + 15 + x, y);
+-        }
+-        ctx.stroke();
+-    }
+-
+-    function drawLoop2AirlockGauge(cx, cy, w, h) {
+-        // Chamber Pressure Rise Simulation
+-        if (state.currentLoop === 2 && state.loop2.currentPsi < 100) {
+-            state.loop2.currentPsi = Math.min(100, state.loop2.currentPsi + 0.15);
+-            document.getElementById('gauge-fill').style.width = `${state.loop2.currentPsi}%`;
+-            document.getElementById('gauge-val').textContent = `${Math.floor(state.loop2.currentPsi)} PSI`;
+-            updateDispatcherUI();
+-        }
+-
+-        // Draw 3D Chamber Valve Wheel
+-        ctx.save();
+-        ctx.translate(cx, cy + 20);
+-        ctx.strokeStyle = state.loop2.opHeldValve ? '#00e676' : '#ff9100';
+-        ctx.lineWidth = 8;
+-        ctx.beginPath();
+-        ctx.arc(0, 0, 70, 0, Math.PI * 2);
+-        ctx.stroke();
+-
+-        ctx.lineWidth = 4;
+-        ctx.beginPath();
+-        ctx.moveTo(-70, 0); ctx.lineTo(70, 0);
+-        ctx.moveTo(0, -70); ctx.lineTo(0, 70);
+-        ctx.stroke();
+-        ctx.restore();
+-    }
+-
+-    function drawLoop3VaultDoor(cx, cy, w, h) {
+-        // Vault Bulkhead Door
+-        ctx.strokeStyle = '#0088ff';
+-        ctx.lineWidth = 4;
+-        ctx.strokeRect(cx - 140, cy - 100, 280, 240);
+-
+-        // Locking Bolts
+-        ctx.fillStyle = state.loop3.tokenAuthorized ? '#00e676' : '#ff1744';
+-        ctx.fillRect(cx - 130, cy - 80, 20, 40);
+-        ctx.fillRect(cx + 110, cy - 80, 20, 40);
+-        ctx.fillRect(cx - 130, cy + 40, 20, 40);
+-        ctx.fillRect(cx + 110, cy + 40, 20, 40);
+-    }
+-
+-    function updateDispatcherUI() {
+-        if (state.role !== 'dispatcher') return;
+-        document.getElementById('disp-op-freq').textContent = `${state.loop1.opFreq} Hz`;
+-        document.getElementById('disp-op-wire').textContent = state.loop1.opWireSeq.length > 0 ? state.loop1.opWireSeq.join(' ➔ ') : 'PENDING';
+-        document.getElementById('disp-loop1-lock').textContent = state.loop1.completed ? 'CLEARED' : 'UNLOCKED';
+-        document.getElementById('disp-loop1-lock').className = `badge ${state.loop1.completed ? 'badge-success' : 'badge-warn'}`;
+-
+-        document.getElementById('disp-op-psi').textContent = `${Math.floor(state.loop2.currentPsi)} PSI`;
+-        document.getElementById('disp-op-valve').textContent = state.loop2.opHeldValve ? `VALVE ${state.loop2.opHeldValve}` : 'NONE';
+-        document.getElementById('disp-loop2-lock').textContent = state.loop2.completed ? 'VENTED' : 'SEALED';
+-        document.getElementById('disp-loop2-lock').className = `badge ${state.loop2.completed ? 'badge-success' : 'badge-warn'}`;
+-
+-        document.getElementById('disp-token-sent').textContent = state.loop3.tokenAuthorized ? 'YES' : 'NO';
+-        document.getElementById('disp-loop3-lock').textContent = state.loop3.completed ? 'UNLOCKED' : 'LOCKED';
+-        document.getElementById('disp-loop3-lock').className = `badge ${state.loop3.completed ? 'badge-success' : 'badge-warn'}`;
+-    }
+-
+-    // =========================================================================
+-    // EVENT LISTENERS & BINDINGS
+-    // =========================================================================
+-
+-    function bindEvents() {
+-        // Role Selection
+-        document.querySelectorAll('.select-role-btn').forEach(btn => {
+-            btn.addEventListener('click', (e) => {
+-                initAudio();
+-                const r = e.target.dataset.role;
+-                setRole(r);
+-                sendP2P('ROLE_SWAP', { newRole: r === 'operative' ? 'dispatcher' : 'operative' });
+-            });
+-        });
+-
+-        document.getElementById('btn-swap-role').addEventListener('click', () => {
+-            const nextRole = state.role === 'operative' ? 'dispatcher' : 'operative';
+-            setRole(nextRole);
+-            sendP2P('ROLE_SWAP', { newRole: state.role });
+-        });
+-
+-        document.getElementById('btn-restart-game').addEventListener('click', () => resetGame(true));
+-        document.getElementById('btn-play-again').addEventListener('click', () => resetGame(true));
+-
+-        // Loop 1 Operative Controls
+-        const freqSlider = document.getElementById('op-freq-slider');
+-        freqSlider.addEventListener('input', (e) => {
+-            initAudio();
+-            state.loop1.opFreq = parseInt(e.target.value, 10);
+-            document.getElementById('op-freq-val').textContent = `${state.loop1.opFreq} Hz`;
+-            sendP2P('OP_STATE_UPDATE', { opFreq: state.loop1.opFreq });
+-        });
+-
+-        document.querySelectorAll('.btn-wire').forEach(btn => {
+-            btn.addEventListener('click', (e) => {
+-                initAudio();
+-                playBeep(500, 'sine', 0.1);
+-                const color = e.target.dataset.color;
+-                if (state.loop1.opWireSeq.length >= 3) state.loop1.opWireSeq = [];
+-                state.loop1.opWireSeq.push(color);
+-                document.getElementById('op-wire-status').textContent = `Sequence: ${state.loop1.opWireSeq.join(' ➔ ')}`;
+-                sendP2P('OP_STATE_UPDATE', { opWireSeq: state.loop1.opWireSeq });
+-            });
+-        });
+-
+-        // Loop 2 Valve Controls
+-        ['a', 'b', 'c'].forEach(v => {
+-            const btn = document.getElementById(`op-valve-${v}`);
+-            const valveName = v.toUpperCase();
+-            
+-            const startValve = () => {
+-                initAudio();
+-                state.loop2.opHeldValve = valveName;
+-                btn.classList.add('active');
+-                sendP2P('OP_STATE_UPDATE', { opHeldValve: valveName });
+-            };
+-            const stopValve = () => {
+-                state.loop2.opHeldValve = null;
+-                btn.classList.remove('active');
+-                sendP2P('OP_STATE_UPDATE', { opHeldValve: null });
+-            };
+-
+-            btn.addEventListener('mousedown', startValve);
+-            btn.addEventListener('mouseup', stopValve);
+-            btn.addEventListener('touchstart', (e) => { e.preventDefault(); startValve(); });
+-            btn.addEventListener('touchend', stopValve);
+-        });
+-
+-        // Loop 3 Keypad Controls
+-        document.querySelectorAll('.btn-num').forEach(btn => {
+-            btn.addEventListener('click', (e) => {
+-                initAudio();
+-                const val = e.target.textContent;
+-                if (val === 'CLR') {
+-                    state.loop3.opInputCode = '';
+-                } else if (val === 'ENT') {
+-                    checkLoop3Completion();
+-                } else if (state.loop3.opInputCode.length < 4) {
+-                    playBeep(700, 'sine', 0.08);
+-                    state.loop3.opInputCode += val;
+-                }
+-                document.getElementById('op-keypad-code').value = state.loop3.opInputCode;
+-                sendP2P('OP_STATE_UPDATE', { opInputCode: state.loop3.opInputCode });
+-            });
+-        });
+-
+-        // Dispatcher Action Buttons
+-        document.getElementById('disp-send-pulse').addEventListener('click', () => {
+-            initAudio();
+-            sendP2P('ACTION_PULSE');
+-            checkLoop1Completion();
+-        });
+-
+-        document.getElementById('disp-trigger-vent').addEventListener('click', () => {
+-            initAudio();
+-            sendP2P('ACTION_VENT');
+-            checkLoop2Completion();
+-        });
+-
+-        document.getElementById('disp-send-auth').addEventListener('click', () => {
+-            initAudio();
+-            state.loop3.tokenAuthorized = true;
+-            sendP2P('ACTION_AUTH');
+-            updateDispatcherUI();
+-        });
+-
+-        // Terminal Tab Switching
+-        document.querySelectorAll('.term-tab').forEach(tab => {
+-            tab.addEventListener('click', (e) => {
+-                initAudio();
+-                document.querySelectorAll('.term-tab').forEach(t => t.classList.remove('active'));
+-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+-                
+-                e.target.classList.add('active');
+-                const targetId = e.target.dataset.tab;
+-                document.getElementById(targetId).classList.add('active');
+-            });
+-        });
+-    }
+-
+-    // Init on DOM ready
+-    window.addEventListener('DOMContentLoaded', () => {
+-        init3DCanvas();
+-        bindEvents();
+-        updatePanelsForCurrentLoop();
++    text('vic-time',clock(model.elapsed)); text('vic-msgs',String(model.totalFailures));
++    text('gameover-reason',model.reason); text('gameover-attempts',String(model.totalFailures));
++    if(model.failures>lastFailures && status==='playing') { beep(150,.18); $('game-app').classList.remove('shake'); void $('game-app').offsetWidth; $('game-app').classList.add('shake'); }
++    if(model.stage>lastStage) beep(750,.25);
++    if(status!==lastStatus && status==='won') beep(880,.5);
++    lastFailures=model.failures; lastStage=model.stage; lastStatus=status;
++    if(active() && r==='operative' && !document.hidden) { if(!raf) raf=requestAnimationFrame(draw); }
++    else { cancelAnimationFrame(raf); raf=0; }
++  }
++  function unlockAudio() {
++    try { const Audio=window.AudioContext || window.webkitAudioContext; if(!audio && Audio) audio=new Audio(); if(audio?.state==='suspended') audio.resume().catch(()=>{}); } catch (_) {}
++  }
++  function beep(hz,duration) {
++    if(!audio || audio.state!=='running') return;
++    const osc=audio.createOscillator(), gain=audio.createGain();
++    osc.frequency.value=hz; gain.gain.setValueAtTime(.035,audio.currentTime);
++    gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);
++    osc.connect(gain); gain.connect(audio.destination); osc.start(); osc.stop(audio.currentTime+duration);
++    osc.onended=()=>{osc.disconnect();gain.disconnect();};
++  }
++  function draw(t) {
++    raf=0;
++    if(!active() || role()!=='operative' || document.hidden) return;
++    const canvas=$('op-canvas'), rect=canvas.getBoundingClientRect(), dpr=Math.min(devicePixelRatio||1,2);
++    const w=Math.max(1,rect.width), h=Math.max(1,rect.height), ctx=canvas.getContext('2d');
++    if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)) {canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
++    if(!ctx) return;
++    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle='#03060a';ctx.fillRect(0,0,w,h);
++    const x=w/2,y=h/2;ctx.strokeStyle='#14314f';ctx.lineWidth=1;
++    ctx.beginPath(); for(const [a,b] of [[0,0],[w,0],[0,h],[w,h]]){ctx.moveTo(a,b);ctx.lineTo(x,y);}ctx.stroke();
++    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++    const phase=reduced?0:t/2000%1;
++    for(let i=1;i<=6;i++){const z=(i+phase)/7;ctx.strokeRect(x*(1-z),y*(1-z),w*z,h*z);}
++    const bw=Math.min(w*.8,320),bh=Math.min(h*.6,150);
++    ctx.fillStyle='#071625';ctx.fillRect(x-bw/2,y-bh/2,bw,bh);ctx.strokeStyle='#0088ff';ctx.strokeRect(x-bw/2,y-bh/2,bw,bh);
++    ctx.strokeStyle='#00e676';ctx.lineWidth=2;
++    if(model.stage===1){ctx.beginPath();for(let i=0;i<bw-24;i++){const yy=y+Math.sin(i*.001*model.freq+(reduced?0:t/180))*bh*.25;if(!i)ctx.moveTo(x-bw/2+12+i,yy);else ctx.lineTo(x-bw/2+12+i,yy);}ctx.stroke();}
++    else {ctx.fillStyle=model.stage===2?'#ff9100':model.authorized?'#00e676':'#ff1744';ctx.font='bold 20px monospace';ctx.textAlign='center';ctx.fillText(model.stage===2?`${Math.floor(model.psi)} PSI`:model.authorized?'TOKEN ACCEPTED':'VAULT SEALED',x,y+8);}
++    raf=requestAnimationFrame(draw);
++  }
++  function releaseValve() { if(localValve!==null){localValve=null;intent('valve',null);} }
++  function bind() {
++    $('btn-swap-role').onclick=()=>intent('role',role()==='operative'?'dispatcher':'operative');
++    for(const id of ['btn-restart-game','btn-play-again','btn-retry-game']) $(id).onclick=()=>intent('restart');
++    document.querySelectorAll('.select-role-btn').forEach(b=>b.onclick=()=>{
++      if(!model) {text('status-text','Open this app with a Spixi contact. Browser preview needs two simulated peers.');return;}
++      intent('role',b.dataset.role);
+     });
+-
++    $('op-freq-slider').oninput=e=>{
++      const value=Number(e.target.value);text('op-freq-val',`${value} Hz`);
++      clearTimeout(freqPending);freqPending=setTimeout(()=>{freqPending=0;intent('frequency',value);},80);
++    };
++    document.querySelectorAll('.btn-wire').forEach(b=>b.onclick=()=>intent('wire',b.dataset.color));
++    for(const v of ['a','b','c']) {
++      const b=$(`op-valve-${v}`);
++      b.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();b.setPointerCapture(e.pointerId);localValve=v;intent('valve',v.toUpperCase());};
++      b.onpointerup=b.onpointercancel=b.onlostpointercapture=releaseValve;
++      b.onkeydown=e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();localValve=v;intent('valve',v.toUpperCase());}};
++      b.onkeyup=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();releaseValve();}};
++      b.onblur=releaseValve;
++    }
++    document.querySelectorAll('.btn-num').forEach(b=>b.onclick=()=>intent('key',b.textContent.trim()));
++    $('disp-send-pulse').onclick=()=>intent('pulse');
++    $('disp-trigger-vent').onclick=()=>intent('vent');
++    $('disp-send-auth').onclick=()=>intent('authorize');
++    document.querySelectorAll('.term-tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
++    window.addEventListener('blur',releaseValve);
++    document.addEventListener('visibilitychange',()=>{if(document.hidden){releaseValve();cancelAnimationFrame(raf);raf=0;}else{send('hello');render();}});
++    window.addEventListener('pagehide',()=>{releaseValve();shutdown();if(audio)audio.close().catch(()=>{});});
++  }
++  document.addEventListener('DOMContentLoaded',()=>{
++    ready=true;bind();render();
++    if(pendingInit){const args=pendingInit;pendingInit=null;sdk.onInit(...args);}
++    // Native lifecycle: announce load once, then await Spixi's onInit callback.
++    sdk.fireOnLoad();
++  });
++  // Opt-in inspection is a deep copy: tests cannot mutate live game state.
++  if(new URLSearchParams(location.search).get('debug')==='1') {
++    Object.defineProperty(window,'__ECLIPSE__',{get:()=>clone({state:model,role:role(),host,connected,session,revision})});
++  }
+ })();
+diff --git a/apps/com.baracuda.spixi.protocol-eclipse/app/js/voice.js b/apps/com.baracuda.spixi.protocol-eclipse/app/js/voice.js
+new file mode 100644
+index 0000000..b50a19c
+--- /dev/null
++++ b/apps/com.baracuda.spixi.protocol-eclipse/app/js/voice.js
+@@ -0,0 +1,108 @@
++/** Optional WebRTC audio. Ixian S2 supports RFC5389 STUN on UDP/3478.
++ * Endpoint is user configured: no invented public node or automatic microphone access.
++ */
++(() => {
++  'use strict';
++  let send = null, offerer = false, enabled = false, remoteReady = false;
++  let pc = null, stream = null, candidates = [], generation = 0, making = false;
++  let localCall = '', remoteCall = '', queue = Promise.resolve(), timeout = 0;
++  const el = id => document.getElementById(id);
++  const status = text => { if(el('voice-status')) el('voice-status').textContent=text; };
++  function parseServer(value) {
++    const text=value.trim();
++    if(!/^stun:(?:[a-z0-9.-]+|\[[a-f0-9:]+\]):\d{1,5}$/i.test(text)) throw new Error('Enter stun:your-s2-host:3478 (UDP STUN, not the S2 messaging port).');
++    const port=Number(text.slice(text.lastIndexOf(':')+1));
++    if(port<1||port>65535) throw new Error('STUN port must be 1–65535.');
++    return text;
++  }
++  function stop(notify=true) {
++    generation++; clearTimeout(timeout); timeout=0;
++    if(notify && send && enabled) send({kind:'end',call:localCall});
++    enabled=false; remoteReady=false; making=false; candidates=[]; localCall=''; remoteCall='';
++    if(pc) {pc.onicecandidate=null;pc.onconnectionstatechange=null;pc.close();pc=null;}
++    if(stream) {stream.getTracks().forEach(t=>t.stop());stream=null;}
++    if(el('voice-audio')) el('voice-audio').srcObject=null;
++    if(el('voice-toggle')) el('voice-toggle').textContent='Enable voice';
++    if(el('voice-mute')) el('voice-mute').disabled=true;
++    status('Voice off · game continues over Spixi');
++  }
++  async function offer() {
++    if(!pc||!enabled||!remoteReady||!offerer||making||pc.signalingState!=='stable') return;
++    making=true; const current=pc, gen=generation;
++    try {
++      const description=await current.createOffer();
++      if(gen!==generation) return;
++      await current.setLocalDescription(description);
++      if(gen===generation) send({kind:'description',call:localCall,to:remoteCall,description:{type:current.localDescription.type,sdp:current.localDescription.sdp}});
++    } finally {if(gen===generation)making=false;}
++  }
++  async function enable() {
++    if(enabled){stop();return;}
++    if(!send){status('Connect to a Spixi peer before enabling voice.');return;}
++    if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){status('Voice unavailable in this WebView. Use a separate voice call.');return;}
++    let url;
++    try {url=parseServer(el('voice-stun').value);} catch(e){status(e.message);return;}
++    const gen=++generation;
++    status('Requesting microphone permission…');el('voice-toggle').disabled=true;
++    try {
++      const media=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
++      if(gen!==generation){media.getTracks().forEach(t=>t.stop());return;}
++      stream=media; enabled=true; localCall=crypto.getRandomValues(new Uint32Array(2)).join('-');
++      pc=new RTCPeerConnection({iceServers:[{urls:url}],iceCandidatePoolSize:0});
++      const current=pc;
++      stream.getTracks().forEach(track=>current.addTrack(track,stream));
++      current.onicecandidate=e=>{if(gen===generation&&e.candidate&&remoteCall)send({kind:'candidate',call:localCall,to:remoteCall,candidate:e.candidate.toJSON()});};
++      current.ontrack=e=>{if(gen!==generation)return;el('voice-audio').srcObject=e.streams[0] || new MediaStream([e.track]);el('voice-audio').play().catch(()=>status('Audio ready; press play on the audio control.'));};
++      current.onconnectionstatechange=()=>{
++        if(gen!==generation)return;
++        if(current.connectionState==='connected'){clearTimeout(timeout);status('Voice connected · encrypted WebRTC audio');}
++        else if(current.connectionState==='failed'){stop();status('Voice connection failed. STUN cannot traverse every NAT; use a separate call or a configured TURN service.');}
++        else if(current.connectionState==='disconnected')status('Voice interrupted · reconnect or disable voice');
++      };
++      el('voice-toggle').textContent='Disable voice';el('voice-mute').disabled=false;el('voice-mute').textContent='Mute';
++      status('Microphone on · waiting for your partner to enable voice');
++      timeout=setTimeout(()=>{if(pc&&pc.connectionState!=='connected'){stop();status('Voice timed out. Check the S2 STUN endpoint or use a separate call.');}},45000);
++      send({kind:'ready',call:localCall});
++    } catch(e) {
++      if(gen===generation){stop();status(e.name==='NotAllowedError'?'Microphone permission denied. Game remains playable.':'Could not start voice. Check microphone and STUN settings.');}
++    } finally {el('voice-toggle').disabled=false;}
++  }
++  async function receive(p) {
++    if(!p||!enabled||!pc||typeof p.call!=='string'||p.call.length>100)return;
++    if(p.kind==='ready') {
++      if(remoteCall && remoteCall!==p.call){stop(false);status('Partner restarted voice. Enable it again to reconnect.');return;}
++      const first=!remoteReady;remoteReady=true;remoteCall=p.call;
++      if(first)send({kind:'ready',call:localCall});
++      await offer();return;
++    }
++    if(p.call!==remoteCall)return;
++    if(p.kind==='end'){stop(false);status('Partner disabled voice.');return;}
++    if(p.to!==localCall)return;
++    const current=pc,gen=generation;
++    if(p.kind==='description'&&p.description&&typeof p.description.sdp==='string'&&p.description.sdp.length<14000) {
++      const d=p.description;
++      if((offerer&&d.type!=='answer')||(!offerer&&d.type!=='offer'))return;
++      await current.setRemoteDescription(d);
++      if(gen!==generation)return;
++      for(const candidate of candidates)await current.addIceCandidate(candidate);
++      candidates=[];
++      if(d.type==='offer'){
++        await current.setLocalDescription(await current.createAnswer());
++        if(gen===generation)send({kind:'description',call:localCall,to:remoteCall,description:{type:current.localDescription.type,sdp:current.localDescription.sdp}});
++      }
++    } else if(p.kind==='candidate'&&p.candidate&&typeof p.candidate.candidate==='string'&&p.candidate.candidate.length<2000) {
++      if(current.remoteDescription)await current.addIceCandidate(p.candidate);
++      else if(candidates.length<64)candidates.push(p.candidate);
++    }
++  }
++  window.EclipseVoice={
++    init(transport,isOfferer){stop(false);send=transport;offerer=isOfferer;},
++    receive(payload){queue=queue.then(()=>receive(payload)).catch(()=>{stop();status('Voice negotiation failed. Disable and retry; gameplay is unaffected.');});},
++    close(){stop();send=null;}
++  };
++  document.addEventListener('DOMContentLoaded',()=>{
++    el('voice-toggle').onclick=enable;
++    el('voice-mute').onclick=()=>{if(!stream)return;const tracks=stream.getAudioTracks(),muted=tracks.some(t=>t.enabled);tracks.forEach(t=>t.enabled=!muted);el('voice-mute').textContent=muted?'Unmute':'Mute';};
++    window.addEventListener('pagehide',()=>stop());
++  });
++})();
+diff --git a/apps/com.baracuda.spixi.protocol-eclipse/appinfo.spixi b/apps/com.baracuda.spixi.protocol-eclipse/appinfo.spixi
+index da2f823..8353fca 100644
+--- a/apps/com.baracuda.spixi.protocol-eclipse/appinfo.spixi
++++ b/apps/com.baracuda.spixi.protocol-eclipse/appinfo.spixi
+@@ -2,7 +2,7 @@ caVersion = 0
+ id = com.baracuda.spixi.protocol-eclipse
+ publisher = Baracuda
+ name = Protocol: Eclipse
+-version = 1.0.0
++version = 1.1.0
+ description = Asymmetric 2-player cooperative puzzle escape game. Operative on ground vs Dispatcher in tactical command.
+ category = Games
+ capabilities = multiUser
+diff --git a/apps/com.baracuda.spixi.protocol-eclipse/tests/cooperative-win.cjs b/apps/com.baracuda.spixi.protocol-eclipse/tests/cooperative-win.cjs
+new file mode 100644
+index 0000000..c4dfc14
+--- /dev/null
++++ b/apps/com.baracuda.spixi.protocol-eclipse/tests/cooperative-win.cjs
+@@ -0,0 +1,134 @@
++/* Run against the static app: GAME_URL=http://127.0.0.1:8770/ node tests/cooperative-win.cjs
++ * Set PLAYWRIGHT_MODULE if Playwright is installed outside this package.
++ * Only the native transport boundary is simulated. No game state or answers injected.
++ */
++const assert = require('node:assert/strict');
++const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
++const base = process.env.GAME_URL || 'http://127.0.0.1:8770/';
++
++(async () => {
++  const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
++  const errors = [], messages = [];
++  let phase = 'setup';
++  try {
++    const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
++    const pages = await Promise.all(contexts.map(c => c.newPage()));
++    const addresses = ['test-operative', 'test-z-dispatcher'];
++    const loaded = [false, false];
++    const queues = [Promise.resolve(), Promise.resolve()];
++    for (let i = 0; i < 2; i++) {
++      pages[i].setDefaultTimeout(12000);
++      pages[i].on('pageerror', e => errors.push(`peer ${i}: ${e.message}`));
++      await pages[i].exposeFunction('testSendNetworkData', data => {
++        if (!loaded[1-i]) return;
++        const message = JSON.parse(data);
++        messages.push({ from: i, type: message.type, action: message.payload?.action });
++        queues[i] = queues[i].then(() => pages[1-i].evaluate(({ sender, data }) => {
++          window.SpixiAppSdk.onNetworkData(sender, data);
++        }, { sender: addresses[i], data })).catch(e => errors.push(`transport: ${e.message}`));
++      });
++      await pages[i].route('**/spixi-app-sdk.js', async route => {
++        const response = await route.fetch();
++        await route.fulfill({ response, body: (await response.text()) +
++          '\nSpixiAppSdk.fireOnLoad = () => {};\nSpixiAppSdk.sendNetworkData = data => window.testSendNetworkData(data);\n' });
++      });
++    }
++    await Promise.all(pages.map(async (p, i) => {
++      await p.goto(base, { waitUntil: 'load' });
++      loaded[i] = true;
++    }));
++    for (let i=0; i<2; i++) await pages[i].evaluate(({ me, peer }) => {
++      SpixiAppSdk.onInit('cooperative-win-session', me, peer);
++    }, { me: addresses[i], peer: addresses[1-i] });
++    const [op, dispatcher] = pages;
++    phase = 'both peers connected with complementary roles';
++    for (const p of pages) await p.waitForFunction(() => document.getElementById('status-text').textContent.includes('P2P linked'));
++    assert.equal(await op.locator('#role-badge').innerText(), 'OPERATIVE');
++    assert.equal(await dispatcher.locator('#role-badge').innerText(), 'DISPATCHER');
++    console.log('PASS: both peers connected; complementary roles');
++
++    phase = 'sector 1 using dispatcher frequency and wire-order clues';
++    const frequency = Number((await dispatcher.locator('#disp-target-freq').innerText()).match(/\d+/)[0]);
++    const wires = (await dispatcher.locator('#disp-wire-order').innerText()).split('➔').map(s=>s.trim());
++    await op.locator('#op-freq-slider').fill(String(frequency));
++    await dispatcher.waitForFunction(f => document.getElementById('disp-op-freq').textContent === `${f} Hz`, frequency);
++    for (const wire of wires) await op.locator(`.btn-wire[data-color="${wire}"]`).click();
++    await dispatcher.waitForFunction(expected => document.getElementById('disp-op-wire').textContent === expected, wires.join(' ➔ '));
++    await dispatcher.locator('#disp-send-pulse').click();
++    await op.locator('#op-loop2-panel.active').waitFor({state:'visible'});
++    await dispatcher.locator('#tab-pressure.active').waitFor({state:'visible'});
++    console.log('PASS: frequency and wires solved through UI; both peers enter sector 2');
++
++    phase = 'sector 2 using real advancing pressure and dispatcher valve clue';
++    const valve = (await dispatcher.locator('#disp-target-valve').innerText()).match(/VALVE ([ABC])/)[1];
++    const pressure = (await dispatcher.locator('#disp-target-psi').innerText()).match(/\d+/g).map(Number);
++    const center = (pressure[0] + pressure[1]) / 2;
++    await op.waitForFunction(target => Number(document.getElementById('gauge-val').textContent.match(/\d+/)[0]) >= target, center, {timeout:25000});
++    const button = op.locator(`#op-valve-${valve.toLowerCase()}`);
++    await button.hover();
++    await op.mouse.down();
++    await dispatcher.waitForFunction(v => document.getElementById('disp-op-valve').textContent === `VALVE ${v}`, valve);
++    await dispatcher.locator('#disp-trigger-vent').click();
++    await op.mouse.up();
++    await op.locator('#op-loop3-panel.active').waitFor({state:'visible'});
++    await dispatcher.locator('#tab-cipher.active').waitFor({state:'visible'});
++    console.log('PASS: timed valve override solved through UI; both peers enter sector 3');
++
++    phase = 'sector 3 decoding operative glyphs with dispatcher dictionary';
++    const glyphs = (await op.locator('#op-glyphs').innerText()).split('•').map(s=>s.trim());
++    const dictionary = {};
++    for (const row of await dispatcher.locator('#cipher-dictionary > div').allTextContents()) {
++      const [glyph, digit] = row.split('→').map(s=>s.trim()); dictionary[glyph] = digit;
++    }
++    const digits = glyphs.map(g => { assert.match(dictionary[g], /^\d$/); return dictionary[g]; });
++    await dispatcher.locator('#disp-send-auth').click();
++    await dispatcher.waitForFunction(() => document.getElementById('disp-token-sent').textContent === 'YES');
++    for (const digit of digits) await op.locator('.btn-num').filter({hasText:new RegExp(`^${digit}$`)}).click();
++    assert.equal(await op.locator('#op-keypad-code').inputValue(), digits.join(''));
++    await op.locator('#btn-num-ent').click();
++    for (const p of pages) await p.locator('#victory-screen.active').waitFor({state:'visible'});
++    assert.equal(await op.locator('#vic-time').innerText(), await dispatcher.locator('#vic-time').innerText());
++    assert.deepEqual(errors, []);
++    for (const action of ['pulse','vent','authorize']) assert.ok(messages.some(m=>m.from===1 && m.action===action),`peer action exchanged: ${action}`);
++    assert.ok(messages.some(m=>m.from===0 && m.type==='snapshot'));
++    console.log('PASS: shared victory with identical elapsed time');
++    phase = 'restart from guest, shared failure, and role swaps';
++    await dispatcher.locator('#btn-play-again').click();
++    for(const p of pages) await p.locator('#victory-screen.active').waitFor({state:'hidden'});
++    await dispatcher.locator('#tab-freq.active').waitFor({state:'visible'});
++    for(let i=0;i<5;i++) {
++      await dispatcher.locator('#disp-send-pulse').click();
++      if(i<4) await dispatcher.waitForFunction(n=>document.getElementById('disp-objective').textContent.includes(`${n}/5`),i+1);
++    }
++    for(const p of pages) await p.locator('#gameover-screen.active').waitFor({state:'visible'});
++    await dispatcher.locator('#btn-retry-game').click();
++    await op.locator('#op-loop1-panel.active').waitFor({state:'visible'});
++    await op.locator('#btn-swap-role').click();
++    await dispatcher.waitForFunction(()=>document.getElementById('role-badge').textContent==='OPERATIVE');
++    assert.equal(await op.locator('#role-badge').innerText(),'DISPATCHER');
++    await dispatcher.locator('#btn-swap-role').click();
++    await op.waitForFunction(()=>document.getElementById('role-badge').textContent==='OPERATIVE');
++    console.log('PASS: guest restart, shared game-over, retry, swaps both directions');
++    phase = 'mobile layout';
++    for(const p of pages) {
++      await p.setViewportSize({width:390,height:844});
++      assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no horizontal overflow');
++      const controls=await p.locator('button:visible').evaluateAll(elements=>elements.map(e=>({height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width})));
++      assert.ok(controls.every(c=>c.height>=44 && c.width>=44),'44px touch targets');
++    }
++    console.log('PASS: both roles at 390x844, no overflow and 44px controls');
++    phase = 'guest reload and snapshot resynchronization';
++    loaded[1]=false;
++    await dispatcher.reload({waitUntil:'load'}); loaded[1]=true;
++    await dispatcher.evaluate(({me,peer})=>SpixiAppSdk.onInit('cooperative-win-session',me,peer),{me:addresses[1],peer:addresses[0]});
++    await dispatcher.waitForFunction(()=>document.getElementById('status-text').textContent.includes('P2P linked'));
++    await dispatcher.locator('#dispatcher-viewport.active').waitFor({state:'visible'});
++    assert.equal(await dispatcher.locator('#disp-op-freq').innerText(),await op.locator('#op-freq-val').innerText());
++    assert.deepEqual(errors,[]);
++    console.log(JSON.stringify({status:'PASS',sectorsCompleted:3,victoriousPeers:2,restartAndFailure:true,mobile:true,guestReload:true,answers:'derived exclusively from visible UI clues',gameStateInjection:false,transport:'ordered local SDK-message relay, not native Spixi',messages:messages.length,pageErrors:errors},null,2));
++  } catch (error) {
++    console.error(`FAIL at ${phase}: ${error.message}`);
++    if(errors.length) console.error(JSON.stringify(errors));
++    process.exitCode = 1;
++  } finally { await browser.close(); }
++})();
+diff --git a/apps/com.baracuda.spixi.protocol-eclipse/tests/sdk-contract.cjs b/apps/com.baracuda.spixi.protocol-eclipse/tests/sdk-contract.cjs
+new file mode 100644
+index 0000000..a1ea0b8
+--- /dev/null
++++ b/apps/com.baracuda.spixi.protocol-eclipse/tests/sdk-contract.cjs
+@@ -0,0 +1,19 @@
++const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
++const bundled=path.resolve(__dirname,'../app/js/spixi-app-sdk.js');
++const files=[bundled,...(process.env.OFFICIAL_SPIXI_SDK?[process.env.OFFICIAL_SPIXI_SDK]:[])];
++for(const file of files){
++ const navigations=[],jobs=[];
++ const window={addEventListener(){}};window.parent=window;
++ const context=vm.createContext({window,console,setTimeout:fn=>jobs.push(fn),btoa:s=>btoa(s),atob:s=>atob(s),location:{set href(v){navigations.push(v);}}});
++ vm.runInContext(fs.readFileSync(file,'utf8'),context);
++ const sdk=context.SpixiAppSdk;
++ sdk.fireOnLoad();jobs.splice(0).forEach(fn=>fn());assert.equal(navigations.pop(),'ixian:onload:0.51');
++ const message=JSON.stringify({v:1,session:'test',type:'voice',payload:{description:{type:'offer',sdp:'v=0\r\n'}}});
++ sdk.sendNetworkData(message,'peer-address');jobs.splice(0).forEach(fn=>fn());
++ const url=navigations.pop();assert.ok(url.startsWith('xa:'));
++ const wire=JSON.parse(Buffer.from(url.slice(3),'base64').toString('utf8'));
++ assert.deepEqual(wire,{c:'ds',d:message,r:'peer-address'});
++ let result;sdk.onInit=(...args)=>result=args;sdk.onInit('session','local','remote');assert.deepEqual(result,['session','local','remote']);
++ console.log('PASS actual SDK execution: load notification, directed ds payload, xa: base64 encoding, callback signature — '+file);
++}
++console.log('Native-host installation/microphone/network not exercised by this contract test.');
+diff --git a/apps/com.baracuda.spixi.protocol-eclipse/tests/voice.cjs b/apps/com.baracuda.spixi.protocol-eclipse/tests/voice.cjs
+new file mode 100644
+index 0000000..7f366d9
+--- /dev/null
++++ b/apps/com.baracuda.spixi.protocol-eclipse/tests/voice.cjs
+@@ -0,0 +1,40 @@
++const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
++const dgram=require('node:dgram'), assert=require('node:assert/strict');
++(async()=>{
++ const stun=dgram.createSocket('udp4');let bindings=0;
++ stun.on('message',(data,remote)=>{
++  if(data.length<20||data.readUInt16BE(0)!==1)return;
++  bindings++; const r=Buffer.alloc(32);r.writeUInt16BE(0x101,0);r.writeUInt16BE(12,2);r.writeUInt32BE(0x2112a442,4);data.copy(r,8,8,20);
++  r.writeUInt16BE(0x20,20);r.writeUInt16BE(8,22);r[25]=1;r.writeUInt16BE(remote.port^0x2112,26);
++  remote.address.split('.').forEach((v,i)=>r[28+i]=Number(v)^r[4+i]);stun.send(r,remote.port,remote.address);
++ });
++ await new Promise(resolve=>stun.bind(0,'0.0.0.0',resolve));
++ const browser=await chromium.launch({args:['--no-sandbox','--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
++ try{
++ const pages=await Promise.all([browser.newPage(),browser.newPage()]);let errors=[],voiceMessages=0;const loaded=[false,false],queue=[Promise.resolve(),Promise.resolve()];
++ for(let i=0;i<2;i++){
++  pages[i].on('pageerror',e=>errors.push(e.message));
++  await pages[i].exposeFunction('relay',data=>{
++   if(!loaded[1-i])return;if(JSON.parse(data).type==='voice')voiceMessages++;
++   queue[i]=queue[i].then(()=>pages[1-i].evaluate(({sender,data})=>SpixiAppSdk.onNetworkData(sender,data),{sender:['a','b'][i],data})).catch(e=>errors.push(e.message));
++  });
++  await pages[i].route('**/spixi-app-sdk.js',async route=>{const r=await route.fetch();await route.fulfill({response:r,body:(await r.text())+'\nSpixiAppSdk.fireOnLoad=()=>{};SpixiAppSdk.sendNetworkData=data=>window.relay(data);'});});
++ }
++ await Promise.all(pages.map(async(p,i)=>{await p.goto('http://127.0.0.1:8770/');loaded[i]=true;}));
++ for(let i=0;i<2;i++)await pages[i].evaluate(({me,peer})=>SpixiAppSdk.onInit('voice-test',me,peer),{me:['a','b'][i],peer:['b','a'][i]});
++ for(const p of pages){await p.waitForFunction(()=>document.getElementById('status-text').textContent.includes('P2P linked'));await p.locator('summary').click();}
++ await pages[0].locator('#voice-toggle').click();
++ assert.match(await pages[0].locator('#voice-status').innerText(),/Enter stun:/);
++ // Local RFC5389 fixture. This is NOT a public Ixian node availability test.
++ const os=require('node:os');const ip=Object.values(os.networkInterfaces()).flat().find(a=>a.family==='IPv4'&&!a.internal)?.address||'127.0.0.1';
++ for(const p of pages){await p.locator('#voice-stun').fill(`stun:${ip}:${stun.address().port}`);await p.locator('#voice-toggle').click();}
++ for(const p of pages)await p.waitForFunction(()=>document.getElementById('voice-status').textContent.includes('Voice connected'),null,{timeout:20000});
++ for(const p of pages)assert.equal(await p.locator('#voice-audio').evaluate(e=>e.srcObject?.getAudioTracks().some(t=>t.readyState==='live')),true);
++ await pages[0].locator('#voice-mute').click();assert.equal(await pages[0].locator('#voice-mute').innerText(),'Unmute');
++ await pages[0].locator('#voice-toggle').click();
++ await pages[1].waitForFunction(()=>document.getElementById('voice-status').textContent.includes('Partner disabled'));
++ for(const p of pages)assert.equal(await p.locator('#voice-audio').evaluate(e=>e.srcObject),null);
++ assert.ok(bindings>0);assert.deepEqual(errors,[]);
++ console.log(JSON.stringify({status:'PASS',realBrowserWebRTC:true,microphone:'synthetic test audio',signaling:'simulated Spixi transport',stun:'local RFC5389 test service, NOT live Ixian S2',stunBindings:bindings,voiceMessages,muteAndTeardown:true,pageErrors:errors},null,2));
++ }finally{await browser.close();stun.close();}
++})().catch(e=>{console.error(e);process.exitCode=1});
