@@ -1,108 +1,105 @@
-/** Optional WebRTC audio. Ixian S2 supports RFC5389 STUN on UDP/3478.
- * Endpoint is user configured: no invented public node or automatic microphone access.
+/* Experimental packet voice. ALL audio travels through the Spixi SDK transport.
+ * PCM16LE mono/8kHz, 100ms frames; no RTCPeerConnection, STUN or TURN.
  */
 (() => {
   'use strict';
-  let send = null, offerer = false, enabled = false, remoteReady = false;
-  let pc = null, stream = null, candidates = [], generation = 0, making = false;
-  let localCall = '', remoteCall = '', queue = Promise.resolve(), timeout = 0;
-  const el = id => document.getElementById(id);
-  const status = text => { if(el('voice-status')) el('voice-status').textContent=text; };
-  function parseServer(value) {
-    const text=value.trim();
-    if(!/^stun:(?:[a-z0-9.-]+|\[[a-f0-9:]+\]):\d{1,5}$/i.test(text)) throw new Error('Enter stun:your-s2-host:3478 (UDP STUN, not the S2 messaging port).');
-    const port=Number(text.slice(text.lastIndexOf(':')+1));
-    if(port<1||port>65535) throw new Error('STUN port must be 1–65535.');
-    return text;
+  const P=window.EclipseVoicePackets, el=id=>document.getElementById(id);
+  const workletURL=new URL('voice-capture.js',document.currentScript.src).href;
+  let send=null,enabled=false,pending=false,generation=0,call='',remote='',muted=false;
+  let context=null,stream=null,capture=null,input=null,gain=null,buffer=null,timer=0;
+  let sequence=0,lastReady=0,lastPeer=0,started=0,windowStart=0,windowFrames=0;
+  const playing=new Set();
+  const status=text=>{el('voice-status').textContent=text;};
+  function transmit(payload) {if(send)send({v:2,...payload});}
+  function setCapture() {
+    capture?.port.postMessage(enabled&&!muted&&!!remote);
+    stream?.getAudioTracks().forEach(t=>{t.enabled=enabled&&!muted&&!!remote;});
   }
   function stop(notify=true) {
-    generation++; clearTimeout(timeout); timeout=0;
-    if(notify && send && enabled) send({kind:'end',call:localCall});
-    enabled=false; remoteReady=false; making=false; candidates=[]; localCall=''; remoteCall='';
-    if(pc) {pc.onicecandidate=null;pc.onconnectionstatechange=null;pc.close();pc=null;}
-    if(stream) {stream.getTracks().forEach(t=>t.stop());stream=null;}
-    if(el('voice-audio')) el('voice-audio').srcObject=null;
-    if(el('voice-toggle')) el('voice-toggle').textContent='Enable voice';
-    if(el('voice-mute')) el('voice-mute').disabled=true;
+    if(notify&&enabled)try{transmit({kind:'end',call,to:remote});}catch(_){}
+    generation++;enabled=pending=false;clearInterval(timer);timer=0;
+    remote=call='';buffer?.reset();buffer=null;
+    if(capture){capture.port.onmessage=null;capture.port.close();capture.disconnect();capture=null;}
+    input?.disconnect();gain?.disconnect();input=gain=null;
+    stream?.getTracks().forEach(t=>t.stop());stream=null;
+    for(const source of playing){source.onended=null;try{source.stop();}catch(_){}source.disconnect();}playing.clear();
+    if(context){context.close().catch(()=>{});context=null;}
+    el('voice-toggle').textContent='Enable voice';el('voice-toggle').disabled=false;
+    el('voice-mute').disabled=true;el('voice-mute').textContent='Mute';
     status('Voice off · game continues over Spixi');
   }
-  async function offer() {
-    if(!pc||!enabled||!remoteReady||!offerer||making||pc.signalingState!=='stable') return;
-    making=true; const current=pc, gen=generation;
-    try {
-      const description=await current.createOffer();
-      if(gen!==generation) return;
-      await current.setLocalDescription(description);
-      if(gen===generation) send({kind:'description',call:localCall,to:remoteCall,description:{type:current.localDescription.type,sdp:current.localDescription.sdp}});
-    } finally {if(gen===generation)making=false;}
+  function play(samples,time) {
+    if(!enabled||!context||context.state!=='running'||playing.size>=8)return;
+    const audio=context.createBuffer(1,P.SAMPLES,P.RATE);audio.copyToChannel(samples,0);
+    const source=context.createBufferSource();source.buffer=audio;source.connect(context.destination);
+    playing.add(source);source.onended=()=>{playing.delete(source);source.disconnect();};source.start(time);
+    status('Receiving packet audio · Spixi AppData');
   }
   async function enable() {
-    if(enabled){stop();return;}
+    if(enabled||pending){stop();return;}
     if(!send){status('Connect to a Spixi peer before enabling voice.');return;}
-    if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){status('Voice unavailable in this WebView. Use a separate voice call.');return;}
-    let url;
-    try {url=parseServer(el('voice-stun').value);} catch(e){status(e.message);return;}
-    const gen=++generation;
-    status('Requesting microphone permission…');el('voice-toggle').disabled=true;
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!AC||!window.AudioWorkletNode){status('Packet voice unavailable in this WebView. Gameplay remains available.');return;}
+    const gen=++generation;pending=true;
+    el('voice-toggle').textContent='Cancel voice';status('Requesting microphone permission…');
     try {
-      const media=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+      context=new AC();
+      if(!context.audioWorklet)throw Error('AudioWorklet unavailable');
+      const ctx=context;await ctx.resume();if(gen!==generation)return;
+      await ctx.audioWorklet.addModule(workletURL);if(gen!==generation)return;
+      const media=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true},video:false});
       if(gen!==generation){media.getTracks().forEach(t=>t.stop());return;}
-      stream=media; enabled=true; localCall=crypto.getRandomValues(new Uint32Array(2)).join('-');
-      pc=new RTCPeerConnection({iceServers:[{urls:url}],iceCandidatePoolSize:0});
-      const current=pc;
-      stream.getTracks().forEach(track=>current.addTrack(track,stream));
-      current.onicecandidate=e=>{if(gen===generation&&e.candidate&&remoteCall)send({kind:'candidate',call:localCall,to:remoteCall,candidate:e.candidate.toJSON()});};
-      current.ontrack=e=>{if(gen!==generation)return;el('voice-audio').srcObject=e.streams[0] || new MediaStream([e.track]);el('voice-audio').play().catch(()=>status('Audio ready; press play on the audio control.'));};
-      current.onconnectionstatechange=()=>{
-        if(gen!==generation)return;
-        if(current.connectionState==='connected'){clearTimeout(timeout);status('Voice connected · encrypted WebRTC audio');}
-        else if(current.connectionState==='failed'){stop();status('Voice connection failed. STUN cannot traverse every NAT; use a separate call or a configured TURN service.');}
-        else if(current.connectionState==='disconnected')status('Voice interrupted · reconnect or disable voice');
+      stream=media;call=crypto.getRandomValues(new Uint32Array(2)).join('-');remote='';
+      sequence=0;muted=false;windowStart=performance.now();windowFrames=0;
+      capture=new AudioWorkletNode(ctx,'eclipse-capture');input=ctx.createMediaStreamSource(stream);
+      gain=ctx.createGain();gain.gain.value=0;
+      input.connect(capture);capture.connect(gain);gain.connect(ctx.destination);
+      buffer=new P.JitterBuffer(()=>ctx.currentTime,play);
+      capture.port.onmessage=e=>{
+        if(gen!==generation||!enabled||muted||!remote||ctx.state!=='running')return;
+        const now=performance.now();if(now-windowStart>=1000){windowStart=now;windowFrames=0;}
+        // Do not flush queued worklet frames in a burst after a UI stall.
+        if(++windowFrames>12)return;
+        try{transmit({kind:'audio',call,to:remote,frame:P.encode(e.data,sequence++)});}
+        catch(_){stop();status('Voice transport failed. Gameplay remains available.');}
       };
-      el('voice-toggle').textContent='Disable voice';el('voice-mute').disabled=false;el('voice-mute').textContent='Mute';
-      status('Microphone on · waiting for your partner to enable voice');
-      timeout=setTimeout(()=>{if(pc&&pc.connectionState!=='connected'){stop();status('Voice timed out. Check the S2 STUN endpoint or use a separate call.');}},45000);
-      send({kind:'ready',call:localCall});
+      enabled=true;pending=false;setCapture();lastReady=0;lastPeer=0;started=performance.now();
+      el('voice-toggle').textContent='Disable voice';el('voice-mute').disabled=false;
+      status('Voice enabled · waiting for partner consent');
+      timer=setInterval(()=>{
+        if(!enabled)return;
+        if(ctx.state!=='running'){stop();status('Audio suspended. Enable voice again when ready.');return;}
+        buffer.pump();
+        const now=performance.now();
+        if((remote&&now-lastPeer>5000)||(!remote&&now-started>30000)){stop();status('Voice peer timed out. Enable again to reconnect.');return;}
+        if(now-lastReady>=1000){lastReady=now;try{transmit({kind:'ready',call});}catch(_){stop();}}
+      },20);
+      transmit({kind:'ready',call});lastReady=performance.now();
     } catch(e) {
-      if(gen===generation){stop();status(e.name==='NotAllowedError'?'Microphone permission denied. Game remains playable.':'Could not start voice. Check microphone and STUN settings.');}
-    } finally {el('voice-toggle').disabled=false;}
+      if(gen===generation){stop();status(e.name==='NotAllowedError'?'Microphone permission denied. Game remains playable.':'Could not start packet voice in this WebView.');}
+    }
   }
-  async function receive(p) {
-    if(!p||!enabled||!pc||typeof p.call!=='string'||p.call.length>100)return;
+  function receive(p) {
+    if(!enabled||!p||p.v!==2||typeof p.call!=='string'||!/^\d+-\d+$/.test(p.call)||p.call.length>30)return;
     if(p.kind==='ready') {
-      if(remoteCall && remoteCall!==p.call){stop(false);status('Partner restarted voice. Enable it again to reconnect.');return;}
-      const first=!remoteReady;remoteReady=true;remoteCall=p.call;
-      if(first)send({kind:'ready',call:localCall});
-      await offer();return;
+      if(remote&&remote!==p.call){stop(false);status('Partner restarted voice. Enable it again to reconnect.');return;}
+      lastPeer=performance.now();
+      if(!remote){remote=p.call;setCapture();transmit({kind:'ready',call});}
+      return;
     }
-    if(p.call!==remoteCall)return;
+    if(p.call!==remote||p.to!==call)return;
     if(p.kind==='end'){stop(false);status('Partner disabled voice.');return;}
-    if(p.to!==localCall)return;
-    const current=pc,gen=generation;
-    if(p.kind==='description'&&p.description&&typeof p.description.sdp==='string'&&p.description.sdp.length<14000) {
-      const d=p.description;
-      if((offerer&&d.type!=='answer')||(!offerer&&d.type!=='offer'))return;
-      await current.setRemoteDescription(d);
-      if(gen!==generation)return;
-      for(const candidate of candidates)await current.addIceCandidate(candidate);
-      candidates=[];
-      if(d.type==='offer'){
-        await current.setLocalDescription(await current.createAnswer());
-        if(gen===generation)send({kind:'description',call:localCall,to:remoteCall,description:{type:current.localDescription.type,sdp:current.localDescription.sdp}});
-      }
-    } else if(p.kind==='candidate'&&p.candidate&&typeof p.candidate.candidate==='string'&&p.candidate.candidate.length<2000) {
-      if(current.remoteDescription)await current.addIceCandidate(p.candidate);
-      else if(candidates.length<64)candidates.push(p.candidate);
-    }
+    if(p.kind==='audio'){const frame=P.decode(p.frame);if(frame)buffer.push(frame);}
   }
   window.EclipseVoice={
-    init(transport,isOfferer){stop(false);send=transport;offerer=isOfferer;},
-    receive(payload){queue=queue.then(()=>receive(payload)).catch(()=>{stop();status('Voice negotiation failed. Disable and retry; gameplay is unaffected.');});},
+    init(transport){stop(false);send=transport;},
+    receive(payload){try{receive(payload);}catch(_){stop();status('Packet voice stopped. Gameplay remains available.');}},
     close(){stop();send=null;}
   };
   document.addEventListener('DOMContentLoaded',()=>{
     el('voice-toggle').onclick=enable;
-    el('voice-mute').onclick=()=>{if(!stream)return;const tracks=stream.getAudioTracks(),muted=tracks.some(t=>t.enabled);tracks.forEach(t=>t.enabled=!muted);el('voice-mute').textContent=muted?'Unmute':'Mute';};
+    el('voice-mute').onclick=()=>{if(!enabled)return;muted=!muted;setCapture();el('voice-mute').textContent=muted?'Unmute':'Mute';};
     window.addEventListener('pagehide',()=>stop());
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
   });
 })();

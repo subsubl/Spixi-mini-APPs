@@ -34,14 +34,12 @@
         </header>
 
         <details class="voice-panel">
-            <summary>Optional voice · Ixian S2 STUN</summary>
-            <p>Both players must enable voice. Direct WebRTC shares network addresses with your peer and STUN server. STUN is not a TURN relay.</p>
-            <label for="voice-stun">S2 STUN endpoint</label>
-            <input id="voice-stun" type="text" placeholder="stun:your-s2-host:3478" autocomplete="off" spellcheck="false">
+            <summary>Optional voice · Spixi audio packets (experimental)</summary>
+            <p>Both players must enable voice. Microphone audio travels as Spixi app messages, not direct WebRTC. Narrowband audio uses about 21 KB/s per speaker before transport overhead. Native-device support and network delay are not yet verified. Headphones recommended.</p>
             <button id="voice-toggle" class="btn btn-primary">Enable voice</button>
             <button id="voice-mute" class="btn btn-outline" disabled>Mute</button>
             <p id="voice-status" role="status">Voice off · game continues over Spixi</p>
-            <audio id="voice-audio" autoplay controls></audio>
+            <p>Playback starts only after you enable voice. Disable voice to stop microphone and playback.</p>
         </details>
         <!-- Role Choice / Lobby Screen -->
 
@@ -295,6 +293,7 @@
 
     <script src="js/spixi-app-sdk.js"></script>
     <script src="js/spixi-tools.js"></script>
+    <script src="js/voice-packets.js"></script>
     <script src="js/voice.js"></script>
     <script src="js/game.js"></script>
 </body>
