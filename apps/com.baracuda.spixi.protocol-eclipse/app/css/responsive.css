@@ -1,0 +1,61 @@
+/* Eclipse 1.1 accessibility and responsive instrument layout. */
+:root { --text-muted: #a4b4c6; }
+html,body { height:100%; overflow:auto; }
+#game-app { width:100%; min-height:100dvh; height:auto; }
+.app-header { min-height:60px; height:auto; flex-wrap:wrap; gap:8px; padding:10px 16px; border-bottom:1px solid var(--border-dark); order:-2; }
+.header-left,.header-center,.header-right { flex-wrap:wrap; min-width:0; }
+.mission-feedback { padding:10px 16px; color:#bacfe5; background:#0c1725; font-size:.85rem; min-height:40px; order:-1; }
+.screen { min-height:calc(100dvh - 120px); overflow:visible; }
+.role-intro { display:none; }
+.role-intro.visible { display:block; position:fixed; left:5%; right:5%; bottom:14px; z-index:200; padding:12px 18px; border:1px solid #0088ff; background:#0a1b30; border-radius:12px; pointer-events:none; box-shadow:0 8px 30px #0009; }
+.voice-panel { padding:12px 16px; background:#0b1421; border-bottom:1px solid #1b2636; }
+.voice-panel summary { cursor:pointer; min-height:32px; color:#9ed6ff; }
+.voice-panel p { font-size:.8rem; color:#b6c7d8; margin:8px 0; }
+.voice-panel input { background:#040810; border:1px solid #426283; color:white; padding:12px; max-width:100%; border-radius:8px; }
+.voice-panel audio { display:block; width:100%; max-width:320px; margin-top:8px; }
+.eclipse-timer { font:700 .9rem monospace; color:#9ed6ff; }
+.eclipse-timer.critical { color:#ff8095; }
+button { min-height:44px; min-width:44px; touch-action:manipulation; }
+button:focus-visible,input:focus-visible { outline:3px solid #b1ddff; outline-offset:3px; }
+button:disabled { opacity:.5; cursor:not-allowed; }
+.btn-valve { touch-action:none; }
+.wire-yellow { background:#d4b232; color:#151204; }
+.wire-buttons { flex-wrap:wrap; }
+#op-canvas { flex:none; height:clamp(180px,32vh,340px); width:100%; }
+.hud-overlay { position:static; padding:12px; }
+.hud-top { display:flex; gap:8px; flex-wrap:wrap; }
+.op-controls-panel { height:auto; min-height:250px; border-top:1px solid var(--border-dark); }
+.puzzle-panel { height:auto; }
+.gauge-bar { position:relative; }
+.crt-header { flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border-dark); }
+.terminal-tabs { flex-wrap:wrap; }
+.crt-screen,.terminal-card,.grid-2col,.loop1-grid,.keypad-grid,.valves-grid { min-width:0; }
+.terminal-card,.target-box,.telemetry-item,.status-msg { overflow-wrap:anywhere; }
+.telemetry-item { gap:12px; border-bottom:1px solid #172435; }
+.log-stream { max-height:340px; width:100%; overflow:auto; overflow-wrap:anywhere; }
+#gameover-screen { align-items:center; justify-content:center; background:radial-gradient(#271221,#070a0f); }
+.gameover-card { background:#20101b; border-color:#ff617b; }
+.gameover-card h2 { color:#ff8c9f; }
+.victory-card { margin:24px auto; }
+.victory-stats { gap:15px; flex-wrap:wrap; }
+.shake .mission-feedback { animation:warning .3s ease; }
+@keyframes warning { 0%,100% {transform:translateX(0);} 30% {transform:translateX(-4px);background:#612337;} 60% {transform:translateX(4px);} }
+@media(max-width:700px) {
+ .app-header { padding:10px; }
+ .game-title { font-size:.9rem; }
+ .header-center { justify-content:space-between; width:100%; }
+ .header-right { width:100%; }
+ .header-right button { flex:1; }
+ .role-cards,.grid-2col,.loop1-grid,.keypad-grid,.valves-grid { grid-template-columns:minmax(0,1fr); gap:12px; }
+ .lobby-card { padding:20px; margin:20px auto; }
+ .lobby-card h2 {font-size:1.2rem;}
+ .role-card {padding:18px;}
+ #dispatcher-viewport {padding:8px;}
+ .crt-screen {padding:12px;}
+ .terminal-card {padding:14px;}
+ .terminal-tabs button {flex:1 1 40%; padding:8px;}
+ .op-controls-panel {padding:12px;}
+ .victory-card {padding:22px;}
+ .role-intro.visible {font-size:.8rem;}
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after {animation:none!important;transition:none!important;} }
